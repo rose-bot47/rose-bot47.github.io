@@ -249,6 +249,7 @@ section {
     position: relative;
     z-index: 1;
     padding: var(--space-2xl) var(--space-lg);
+    scroll-margin-top: 80px;
 }
 
 .section-header {
@@ -309,6 +310,18 @@ section {
 .project-grid-small {
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     max-width: 800px;
+}
+
+/* In-Development software cards: wider two-across layout (full section width) */
+.software .project-grid-small {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-width: none;
+}
+
+@media (max-width: 700px) {
+    .software .project-grid-small {
+        grid-template-columns: 1fr;
+    }
 }
 
 .project-card {
@@ -388,6 +401,188 @@ section {
     color: var(--accent-secondary);
     border-radius: 100px;
     border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+/* Section Intro (Software / Hardware domain headers) */
+.section-intro {
+    color: var(--text-secondary);
+    font-size: 1.05rem;
+    line-height: 1.7;
+    max-width: 640px;
+    margin-top: var(--space-sm);
+}
+
+.hero-highlight {
+    color: var(--accent-secondary);
+    font-weight: 500;
+}
+
+/* Software Section */
+.software {
+    background: var(--bg-primary);
+}
+
+.hardware {
+    background: var(--bg-secondary);
+}
+
+/* Software Cards (image-less, icon + status treatment) */
+.software-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-card);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    transition: all var(--transition-base);
+}
+
+.software-card:hover {
+    border-color: var(--border-hover);
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.software-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-md) var(--space-md) 0;
+}
+
+.software-icon {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent-glow);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 10px;
+    flex-shrink: 0;
+}
+
+.software-icon svg {
+    width: 22px;
+    height: 22px;
+    color: var(--accent-secondary);
+}
+
+.software-info {
+    padding: var(--space-md);
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.software-info h4 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: var(--space-xs);
+}
+
+.software-info p {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.65;
+    margin-bottom: var(--space-sm);
+}
+
+.software-info .project-tags {
+    margin-top: auto;
+}
+
+.mono {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+    font-size: 0.72em;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    vertical-align: 0.08em;
+}
+
+/* Featured software card spans two columns like project-card-featured */
+.software-card-featured {
+    grid-column: span 2;
+}
+
+.software-card-featured .software-info h4 {
+    font-size: 1.5rem;
+}
+
+.software-card-featured .software-info p {
+    font-size: 1rem;
+    max-width: 720px;
+}
+
+.software-card-featured .software-icon {
+    width: 52px;
+    height: 52px;
+}
+
+.software-card-featured .software-icon svg {
+    width: 26px;
+    height: 26px;
+}
+
+/* Status badges */
+.status-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.35rem 0.7rem;
+    border-radius: 100px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+
+.status-released {
+    color: #34d399;
+    background: rgba(52, 211, 153, 0.1);
+    border-color: rgba(52, 211, 153, 0.25);
+}
+
+.status-soon {
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.1);
+    border-color: rgba(251, 191, 36, 0.25);
+}
+
+.status-oss {
+    color: var(--accent-secondary);
+    background: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.25);
+}
+
+.status-dev {
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--border-hover);
+}
+
+/* Software external link */
+.software-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: var(--space-sm);
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--accent-secondary);
+    text-decoration: none;
+    transition: gap var(--transition-fast), color var(--transition-fast);
+    align-self: flex-start;
+}
+
+.software-link svg {
+    width: 15px;
+    height: 15px;
+}
+
+.software-link:hover {
+    color: var(--text-primary);
+    gap: 0.6rem;
 }
 
 /* Skills Section */
@@ -536,9 +731,17 @@ section {
         grid-column: span 1;
         display: block;
     }
-    
+
     .project-card-featured .project-image {
         height: 220px;
+    }
+
+    .software-card-featured {
+        grid-column: span 1;
+    }
+
+    .software-card-featured .software-info h4 {
+        font-size: 1.3rem;
     }
 }
 
@@ -577,6 +780,128 @@ section {
     .btn {
         padding: 0.75rem 1.25rem;
         font-size: 0.85rem;
+    }
+}
+
+/* ===================================
+   Image Lightbox
+   =================================== */
+
+/* Clickable image affordance (applied via JS) */
+.zoomable {
+    cursor: zoom-in;
+}
+
+.zoomable:focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 3px;
+    border-radius: 4px;
+}
+
+.lightbox[hidden] {
+    display: none;
+}
+
+.lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-lg);
+    background: rgba(6, 6, 8, 0.92);
+    backdrop-filter: blur(8px);
+    opacity: 0;
+    transition: opacity var(--transition-base);
+}
+
+.lightbox.open {
+    opacity: 1;
+}
+
+.lightbox-figure {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-sm);
+    max-width: 100%;
+    max-height: 100%;
+}
+
+.lightbox-img {
+    display: block;
+    max-width: min(1100px, 92vw);
+    max-height: 82vh;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: 12px;
+    border: 1px solid var(--border-hover);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+    background: var(--bg-secondary);
+    transform: scale(0.96);
+    transition: transform var(--transition-base);
+}
+
+.lightbox.open .lightbox-img {
+    transform: scale(1);
+}
+
+.lightbox-caption {
+    font-size: 0.9rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--text-secondary);
+    text-align: center;
+    max-width: min(1100px, 92vw);
+}
+
+.lightbox-caption:empty {
+    display: none;
+}
+
+.lightbox-close {
+    position: fixed;
+    top: var(--space-md);
+    right: var(--space-md);
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border-hover);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+.lightbox-close svg {
+    width: 22px;
+    height: 22px;
+}
+
+.lightbox-close:hover {
+    border-color: var(--accent-primary);
+    background: var(--accent-glow);
+}
+
+.lightbox-close:focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lightbox,
+    .lightbox .lightbox-img {
+        transition: none;
+    }
+
+    .lightbox .lightbox-img {
+        transform: none;
     }
 }
 
