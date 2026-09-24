@@ -1,0 +1,38 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <!--
+    Couchlight app mark (redrawn 2026-09-13).
+
+    THE POINT OF THIS REDRAW: the previous mark put a play glyph inside a
+    purple rounded-square badge. Changing Discord's glyph and Discord's colour
+    while keeping Discord's SILHOUETTE does not stop it reading as Discord,
+    because at 16-48px a silhouette is all anyone perceives. So the badge is
+    gone. This mark is free-standing on transparency and its outline -- a play
+    triangle with two arcs coming off the point -- is not a shape anything else
+    in a taskbar occupies.
+
+    This file is the single source of truth for the mark's GEOMETRY. The raster
+    icons are drawn from the same numbers in build-icons.cjs (which also drops
+    the arcs below 32px, where two thin strokes turn to mush); the in-app title
+    bar uses the same shape in monochrome. Change the geometry here and there
+    in the same pass, or they drift.
+  -->
+  <defs>
+    <linearGradient id="ss-mark" x1="46" y1="52" x2="158" y2="204" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#c084fc"/>
+      <stop offset="1" stop-color="#c026d3"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Broadcast arcs, struck from the triangle's apex at (158,128).
+       Drawn first so the rounded point overlaps their inner ends. -->
+  <g fill="none" stroke="url(#ss-mark)" stroke-linecap="round">
+    <path d="M175.21 103.42 A 30 30 0 0 1 175.21 152.58" stroke-width="20" opacity="0.95"/>
+    <path d="M190.12 82.12 A 56 56 0 0 1 190.12 173.88" stroke-width="17" opacity="0.5"/>
+  </g>
+
+  <!-- Play triangle. Corners are rounded with a round-join stroke of the same
+       paint rather than a path with arcs, so the rounding scales cleanly. -->
+  <path d="M46 52 L46 204 L158 128 Z"
+        fill="url(#ss-mark)" stroke="url(#ss-mark)"
+        stroke-width="26" stroke-linejoin="round"/>
+</svg>

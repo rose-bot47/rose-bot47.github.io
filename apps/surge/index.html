@@ -1,0 +1,2123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Surge</title>
+<meta name="description" content="An honest first look at coastal flood exposure. Surge reports what the public elevation datasets actually say about a place, how much they disagree, and whether that disagreement is larger than the change being asked about." />
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.9.0/dist/maplibre-gl.css" />
+<style>
+  /* ============================================================
+     SURGE — Observatory design language (ObservatorystyleContext V2/V5/V6)
+     Near-black ink ground, one warm light, amethyst mono labels,
+     serif reading copy, hairlines rather than boxes.
+     Fail-open: nothing is hidden behind an observer. No gradient text.
+     ============================================================ */
+  :root{
+    --ink:        oklch(0.09 0.02 280);
+    --ink-2:      oklch(0.13 0.03 285);
+    --ink-3:      oklch(0.17 0.03 288);
+    --beam:       oklch(0.88 0.09 95);
+    --amethyst:   oklch(0.62 0.17 305);
+    --line:       oklch(0.30 0.03 290);
+    --line-soft:  oklch(0.24 0.025 290);
+    --text:       oklch(0.93 0.01 90);
+    --muted:      oklch(0.62 0.02 290);
+    --warn:       oklch(0.72 0.16 50);
+    --stop:       oklch(0.65 0.20 25);
+    --ok:         oklch(0.72 0.14 155);
+
+    --serif: Georgia, "Times New Roman", "Iowan Old Style", serif;
+    --mono:  ui-monospace, "Cascadia Mono", Consolas, "SF Mono", monospace;
+
+    --dur: 200ms;
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  *{ box-sizing: border-box; }
+  html, body{ height:100%; margin:0; }
+  body{
+    background: var(--ink);
+    color: var(--text);
+    font: 16px/1.55 var(--serif);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow: hidden;
+  }
+
+  .label{
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.30em;
+    text-transform: uppercase;
+    color: var(--amethyst);
+    font-weight: 400;
+  }
+  .muted{ color: var(--muted); }
+  .tabular{ font-variant-numeric: tabular-nums; }
+
+  /* ---------- shell ---------- */
+  .shell{
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    height: 100dvh;
+    position: relative;
+  }
+
+  header{
+    grid-column: 1;
+    display: flex;
+    align-items: baseline;
+    gap: 24px;
+    flex-wrap: wrap;
+    padding: 16px 24px 14px;
+    padding-top: calc(16px + env(safe-area-inset-top, 0px));
+    border-bottom: 1px solid var(--line);
+    background: var(--ink);
+    position: relative;
+    z-index: 20;
+  }
+  header h1{
+    font-size: 21px;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    margin: 0;
+  }
+  header h1 .dot{
+    display:inline-block; width:7px; height:7px; border-radius:50%;
+    background: var(--beam); margin-right:10px; vertical-align: 2px;
+    box-shadow: 0 0 10px 1px color-mix(in oklch, var(--beam) 55%, transparent);
+  }
+  header .tagline{
+    font-size: 13.5px; color: var(--muted); font-style: italic;
+    /* min() not a bare ch value: a grid child with a ch-based max-width still
+       reports a min-content width, which widens the whole track past the
+       viewport on a phone. This was a real overflow bug at 400px. */
+    max-width: min(52ch, 100%);
+  }
+  /* Grid children default to min-width:auto, so any wide child stretches the
+     track. Nothing here may be wider than the screen. */
+  .shell > *{ min-width: 0; }
+  header .spacer{ flex: 1 1 auto; }
+  header nav a{
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--muted);
+    text-decoration: none; border-bottom: 1px solid var(--line);
+    padding-bottom: 3px;
+  }
+  header nav a:hover{ color: var(--beam); border-color: var(--beam); }
+
+  /* ---------- panel ---------- */
+  /* the full log: a drawer from the left on a desktop (below the header) */
+  aside{
+    position: absolute; left: 0; top: var(--hdr, 84px); bottom: 0; width: min(420px, 92vw);
+    z-index: 30; border-right: 1px solid var(--line);
+    overflow-y: auto; overflow-x: hidden;
+    background: var(--ink);
+    padding-bottom: calc(32px + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-102%); visibility: hidden;
+    transition: transform .32s var(--ease-out), visibility 0s linear .32s;
+    box-shadow: 18px 0 50px oklch(0 0 0 / .45);
+  }
+  .shell.log-open aside{ transform: none; visibility: visible; transition: transform .32s var(--ease-out); }
+  .log-head{ display:flex; justify-content: space-between; align-items: baseline; padding: 18px 24px 14px;
+             border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--ink); z-index: 1; }
+  .calib-note{ padding: 16px 24px 18px; border-bottom: 1px solid var(--line-soft); }
+  .calib-note .label{ display:block; margin-bottom: 8px; }
+  .calib-note p{ font-size: 13.5px; color: var(--muted); margin: 0; }
+
+  .search{ padding: 0; }
+  .search form{ display:flex; gap: 0; border-bottom: 1px solid var(--line); }
+  .search input{
+    flex: 1 1 auto;
+    background: transparent; border: 0; outline: 0;
+    color: var(--text); font: 16px/1.4 var(--serif);
+    padding: 10px 2px;
+  }
+  .search input::placeholder{ color: color-mix(in oklch, var(--muted) 72%, transparent); font-style: italic; }
+  .search input:focus-visible{ outline: none; }
+  .search form:focus-within{ border-color: var(--beam); }
+  .search button{
+    background: transparent; border: 0; cursor: pointer;
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--beam); padding: 0 4px 0 14px;
+  }
+  .search .hint{
+    margin-top: 10px; font-size: 12px; color: var(--muted);
+    display:flex; gap: 14px; flex-wrap: wrap; align-items:center;
+  }
+  .linkish{
+    background: none; border: 0; padding: 0; cursor: pointer;
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--muted);
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .linkish:hover{ color: var(--beam); border-color: var(--beam); }
+
+  .entry{ padding: 20px 24px; border-bottom: 1px solid var(--line-soft); }
+  .entry > .label{ display:block; margin-bottom: 12px; }
+  .entry h2{
+    font-size: 19px; font-weight: 400; margin: 0 0 8px;
+    letter-spacing: 0.005em; line-height: 1.25;
+  }
+  .entry p{ margin: 0 0 10px; font-size: 15px; color: var(--muted); }
+  .entry p.lead{ color: var(--text); }
+  .entry p:last-child{ margin-bottom: 0; }
+  .entry em{ color: var(--beam); font-style: italic; }
+
+  /* readings table */
+  table.readings{ width:100%; border-collapse: collapse; margin: 6px 0 4px; table-layout: fixed; }
+  table.readings td:first-child{ overflow-wrap: anywhere; }
+  table.readings th{
+    text-align:left; font-family: var(--mono); font-weight:400;
+    font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--muted); padding: 0 0 7px; border-bottom: 1px solid var(--line);
+  }
+  table.readings th.num, table.readings td.num{ text-align: right; }
+  table.readings td{
+    padding: 9px 0; border-bottom: 1px solid var(--line-soft);
+    font-size: 14px; vertical-align: top;
+  }
+  table.readings td.num{
+    font-family: var(--mono); font-variant-numeric: tabular-nums;
+    font-size: 15px; color: var(--text); white-space: nowrap; padding-left: 10px;
+  }
+  table.readings td .ds{ display:block; color: var(--text); }
+  table.readings td .meta{
+    display:block; font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.06em; color: var(--muted); margin-top: 3px;
+  }
+  .dsm{ color: var(--warn); }
+  .dtm{ color: var(--ok); }
+
+  .spread{
+    margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line);
+    display:flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+  }
+  .spread .big{
+    font-family: var(--mono); font-variant-numeric: tabular-nums;
+    font-size: 30px; line-height: 1; color: var(--beam);
+  }
+  .spread .cap{ font-size: 13px; color: var(--muted); max-width: 30ch; }
+
+  /* verdict */
+  .verdict{ border-left: 2px solid var(--line); padding-left: 16px; margin-top: 4px; }
+  .verdict.cannot{ border-color: var(--stop); }
+  .verdict.marginal{ border-color: var(--warn); }
+  .verdict.can{ border-color: var(--ok); }
+  .verdict .head{
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.2em;
+    text-transform: uppercase; margin-bottom: 8px; display:block;
+  }
+  .verdict.cannot .head{ color: var(--stop); }
+  .verdict.marginal .head{ color: var(--warn); }
+  .verdict.can .head{ color: var(--ok); }
+  .verdict p{ font-size: 15px; color: var(--text); }
+
+  /* fema */
+  .fema-zone{
+    display:flex; align-items: baseline; gap: 12px; margin: 4px 0 12px; flex-wrap: wrap;
+  }
+  .fema-zone .z{
+    font-family: var(--mono); font-size: 26px; letter-spacing: 0.04em;
+    color: var(--beam); line-height:1;
+  }
+  .fema-zone .z.safe{ color: var(--ok); }
+  .fema-zone .z.hazard{ color: var(--stop); }
+  .fema-zone .z.leveed{ color: var(--warn); }
+  .fema-zone em{ color: var(--warn); font-style: italic; }
+  dl.kv{ margin: 8px 0 0; font-size: 13.5px; }
+  dl.kv div{ display:flex; gap: 12px; padding: 5px 0; border-bottom: 1px solid var(--line-soft); }
+  dl.kv dt{
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--muted); flex: 0 0 132px;
+  }
+  dl.kv dd{ margin:0; color: var(--text); font-variant-numeric: tabular-nums; }
+
+  .sources{ margin-top: 12px; }
+  .sources a, .entry a{ color: var(--muted); text-decoration: none; border-bottom: 1px solid var(--line); }
+  .sources a:hover, .entry a:hover{ color: var(--beam); border-color: var(--beam); }
+  .src-line{
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.05em;
+    color: var(--muted); line-height: 1.7;
+  }
+
+  .status{
+    padding: 20px 24px; font-size: 14px; color: var(--muted); font-style: italic;
+  }
+
+  /* calibration strip (now on the map, in the float bar) */
+  .calib{ padding: 10px 0 0; }
+  .calib .row{ display:flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .calib button{
+    background: transparent; border: 1px solid var(--line);
+    color: var(--muted); cursor: pointer;
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em;
+    text-transform: uppercase; padding: 6px 9px; border-radius: 2px;
+    transition: color var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out);
+  }
+  .calib button:hover{ color: var(--beam); border-color: var(--beam); }
+
+  /* ---------- the float bar: on the map, top left ---------- */
+  .floatbar{
+    position: absolute; z-index: 12; left: 14px; top: 14px; width: min(420px, calc(100% - 300px));
+    padding: 12px 14px 10px; border-radius: 16px;
+    background: color-mix(in oklch, var(--ink) 74%, transparent);
+    -webkit-backdrop-filter: blur(18px) saturate(1.3); backdrop-filter: blur(18px) saturate(1.3);
+    border: 1px solid oklch(1 0 0 / .10); border-top-color: oklch(1 0 0 / .22);
+    box-shadow: 0 12px 36px oklch(0 0 0 / .35);
+  }
+  .floatbar .label{ font-size: 9px; letter-spacing: .22em; }
+  .fb-foot{ display:flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 10px;
+            padding-top: 9px; border-top: 1px solid var(--line-soft); }
+  .mode{ display:inline-flex; align-items: center; gap: 0; margin-right: auto; }
+  .mode .label{ margin-right: 8px; }
+  .mode button{
+    background: transparent; border: 1px solid var(--line); color: var(--muted); cursor: pointer;
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase;
+    padding: 5px 8px; margin-left: -1px;
+  }
+  .mode button:first-of-type{ border-radius: 2px 0 0 2px; }
+  .mode button:last-of-type{ border-radius: 0 2px 2px 0; }
+  .mode button[aria-checked="true"]{ color: var(--ink); background: var(--beam); border-color: var(--beam); }
+  .fb-privacy{ margin: 7px 0 0; font-size: 11px; color: var(--muted); font-style: italic; }
+  .fb-status{ margin: 8px 0 0; font-size: 12.5px; color: var(--text); font-style: italic; line-height: 1.4; }
+  .shell.pan-mode #map .maplibregl-canvas-container.maplibregl-interactive{ cursor: grab; }
+  .shell:not(.pan-mode) #map .maplibregl-canvas-container.maplibregl-interactive{ cursor: crosshair; }
+
+  /* ---------- map ---------- */
+  main{ position: relative; }
+  #map{ position:absolute; inset:0; background: transparent; }
+  /* The sky behind the globe (space.js): painted once per window size, slides a third
+     as fast as the globe turns, fades out by zoom 6 when the planet fills the window. */
+  #space{ position:absolute; inset:0; overflow:hidden; background: var(--ink); pointer-events:none;
+          transition: opacity .35s linear; }
+  #space .space-strip{ position:absolute; left:0; top:-30px; will-change: transform; }
+  #space .tw{ position:absolute; border-radius:50%; background: currentColor;
+              box-shadow: 0 0 6px 1px currentColor, 0 0 16px 3px color-mix(in srgb, currentColor 35%, transparent);
+              animation: twinkle 4s ease-in-out infinite; opacity:.25; }
+  /* the air around the planet, behind the map; its inner half is hidden by the globe */
+  #space .space-halo{ position:absolute; left:0; top:0; border-radius:50%; pointer-events:none;
+    background: radial-gradient(closest-side, rgba(120,180,255,0) 66%, rgba(110,175,255,.55) 72.5%,
+                rgba(96,140,255,.22) 78%, rgba(140,90,255,.08) 88%, rgba(0,0,0,0) 100%); }
+  #space .space-sun{ position:absolute; left:-18vmax; top:-22vmax; width:62vmax; height:62vmax; border-radius:50%;
+    pointer-events:none; mix-blend-mode: screen;
+    background: radial-gradient(closest-side, rgba(255,214,160,.30), rgba(255,170,110,.10) 38%, rgba(255,140,90,0) 100%); }
+  #space .space-meteor{ position:absolute; left:62%; top:12%; width:150px; height:1.5px; pointer-events:none;
+    background: linear-gradient(90deg, rgba(255,255,255,0), rgba(220,235,255,.95));
+    border-radius: 2px; opacity:0; transform: rotate(152deg);
+    animation: meteor 13s linear infinite 4s; }
+  @keyframes meteor{
+    0%   { opacity:0; transform: rotate(152deg) translateX(0); }
+    1.5% { opacity:1; }
+    6%   { opacity:0; transform: rotate(152deg) translateX(460px); }
+    100% { opacity:0; transform: rotate(152deg) translateX(460px); } }
+  @media (prefers-reduced-motion: reduce){ #space .space-meteor{ display:none; } }
+  /* over the map: limb darkening + a sheen from the upper left, so flat tiles read as a sphere */
+  .globe-shade-clip{ position:absolute; inset:0; overflow:hidden; pointer-events:none; }
+  .globe-shade{ position:absolute; left:0; top:0; border-radius:50%; pointer-events:none;
+    background:
+      radial-gradient(circle at 34% 30%, rgba(255,255,255,.16), rgba(255,255,255,0) 42%),
+      radial-gradient(circle at 50% 50%, rgba(10,12,40,0) 58%, rgba(10,12,40,.18) 82%, rgba(30,60,140,.42) 97%, rgba(120,170,255,.55) 100%);
+    transition: opacity .3s linear; }
+  @keyframes twinkle{ 0%,100%{ opacity:.18; transform: scale(.7); } 50%{ opacity:.95; transform: scale(1.15); } }
+  @media (prefers-reduced-motion: reduce){ #space .tw{ animation:none; } #space{ transition:none; } }
+  .layers{
+    position:absolute; z-index: 10; right: 14px; top: 14px;
+    background: color-mix(in oklch, var(--ink) 88%, transparent);
+    border: 1px solid var(--line); border-radius: 3px;
+    padding: 12px 14px; max-width: min(250px, calc(100vw - 40px));
+    backdrop-filter: blur(6px);
+  }
+  .layers .label{ display:block; margin-bottom: 9px; }
+  .layers label.row{
+    display:flex; gap:9px; align-items: flex-start; font-size: 12.5px;
+    color: var(--text); cursor: pointer; padding: 3px 0;
+  }
+  .layers input{ accent-color: var(--amethyst); margin-top: 3px; }
+  .layers .note{ font-size: 11px; color: var(--muted); margin-top: 8px; font-style: italic; }
+  .layers .note a{ color: var(--muted); text-decoration: none; border-bottom: 1px solid var(--line); }
+  .layers .note a:hover{ color: var(--beam); border-color: var(--beam); }
+  .attrib{
+    position:absolute; z-index: 10; left: 10px; bottom: 8px;
+    font-family: var(--mono); font-size: 9.5px; color: var(--muted);
+    background: color-mix(in oklch, var(--ink) 80%, transparent);
+    padding: 4px 8px; border-radius: 2px; max-width: 70%;
+  }
+  .attrib a{ color: var(--muted); }
+
+  .maplibregl-ctrl-attrib{ display:none !important; }
+
+  /* The pin: a needle with a lit head, so "a pin anywhere" reads as a pin and
+     not as a dot. Draggable; the point it reads is the needle's tip. */
+  .marker-pin{
+    width: 22px; height: 34px; position: relative; cursor: grab;
+    filter: drop-shadow(0 3px 6px oklch(0 0 0 / 0.45));
+  }
+  .marker-pin:active{ cursor: grabbing; }
+  .marker-pin::before{
+    content:""; position:absolute; left: 3px; top: 0; width: 16px; height: 16px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, oklch(0.98 0.03 95), var(--beam) 55%, oklch(0.70 0.10 80));
+    box-shadow: 0 0 0 2px color-mix(in oklch, var(--ink) 70%, transparent),
+                0 0 18px 4px color-mix(in oklch, var(--beam) 50%, transparent);
+  }
+  .marker-pin::after{
+    content:""; position:absolute; left: 10px; top: 15px; width: 2px; height: 19px;
+    background: linear-gradient(var(--beam), color-mix(in oklch, var(--beam) 30%, transparent));
+    border-radius: 1px;
+  }
+
+  /* ---------- layers panel: FEMA status by zoom ---------- */
+  .layers .zoomstate{
+    margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--line-soft);
+    font-size: 11.5px; color: var(--text); line-height: 1.45;
+  }
+  .layers .zoomstate .tag{
+    display:inline-block; font-family: var(--mono); font-size: 9px; letter-spacing: .16em;
+    text-transform: uppercase; padding: 2px 6px; border-radius: 2px; margin-bottom: 5px;
+    border: 1px solid currentColor;
+  }
+  .layers .zoomstate a{ color: var(--muted); text-decoration: none; border-bottom: 1px solid var(--line); }
+  .zoomstate .tag.native{ color: var(--ok); }
+  .zoomstate .tag.stretched{ color: var(--warn); }
+  .zoomstate .tag.far{ color: var(--amethyst); }
+  .zoomstate .tag.off{ color: var(--muted); }
+  .layers details{ margin-top: 8px; }
+  .layers summary{
+    cursor: pointer; font-family: var(--mono); font-size: 9.5px; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--muted); list-style: none;
+  }
+  .layers summary::-webkit-details-marker{ display:none; }
+  .layers summary::before{ content:"+ "; }
+  .layers details[open] summary::before{ content:"\2212  "; }
+  .legend{ list-style: none; margin: 8px 0 0; padding: 0; }
+  .legend li{ display:flex; gap: 8px; align-items: center; font-size: 11px; color: var(--text); padding: 2px 0; line-height: 1.3; }
+  .legend img, .legend .sw{ flex: 0 0 14px; width: 14px; height: 14px; border: 1px solid var(--line); }
+  .legend .sw.avail{ background: oklch(0.78 0.09 285); }
+  /* Overview swatches: the same colours build_overview.py paints (PAL there). */
+  .legend .sw.ov-high{ background: rgb(0,112,255); }
+  .legend .sw.ov-mod{ background: rgb(255,110,20); }
+  .legend .sw.ov-lev{ background: repeating-linear-gradient(135deg, rgb(232,160,0) 0 3px, rgb(128,88,0) 3px 6px); }
+  .legend .sw.ov-und{ background: rgba(214,190,60,.35); }
+  .legend .lg-head{ font-family: var(--mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase;
+                    color: var(--muted); padding: 6px 0 2px; }
+  .legend .lg-head span{ color: var(--amethyst); }
+  #legendBox:not(.far) .lg-far, #legendBox.far .lg-near{ display: none; }
+  .legend em{ color: var(--warn); font-style: italic; }
+  .layer-actions{ display:flex; gap: 10px; flex-wrap: wrap; margin-top: 9px; }
+
+  /* ==========================================================
+     LIQUID GLASS READOUT — the window that opens beneath the pin.
+     Material per GlassstyleContext V7, adapted to a dark instrument:
+     a darker glass so light text stays legible over ANY basemap tile
+     (FEMA's teal, ocean, bright land), a brighter top edge for the light
+     source above, a pointer-following specular, and a lens rim that bends
+     the map harder than the middle. The glass never moves on its own.
+     ========================================================== */
+  .glass-pop .maplibregl-popup-content{
+    background: transparent; box-shadow: none; padding: 0; border-radius: 26px;
+  }
+  .glass-pop .maplibregl-popup-tip{ display: none; }
+  .glass-pop{ z-index: 15; max-width: none !important; }
+
+  .glass{
+    --mx: 30%; --my: 0%;
+    position: relative; isolation: isolate;
+    width: min(392px, calc(100vw - 28px));
+    color: var(--text);
+    /* EXTREMELY heavily frosted (her words): a very wide blur, a milky white layer so it
+       reads as frost rather than smoke, and a fine grain like etched glass. The numbers sit
+       on top of all of it at full contrast, so the frost costs nothing in legibility. */
+    background:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .11 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+      linear-gradient(oklch(1 0 0 / .085), oklch(1 0 0 / .045)),
+      color-mix(in oklch, var(--ink) 52%, transparent);
+    -webkit-backdrop-filter: blur(64px) saturate(1.35) brightness(.78);
+    backdrop-filter: blur(64px) saturate(1.35) brightness(.78);
+    border-radius: 26px;
+    border: 1px solid oklch(1 0 0 / 0.12);
+    border-top-color: oklch(1 0 0 / 0.30);
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.16),
+      0 2px 6px oklch(0 0 0 / 0.30),
+      0 22px 60px oklch(0 0 0 / 0.45);
+    padding: 16px 16px 12px;
+    font-family: var(--serif);
+  }
+  .glass::before{                         /* specular: the light source, following the pointer */
+    content:""; position:absolute; inset:0; border-radius: inherit; pointer-events:none; z-index:-1;
+    background:
+      radial-gradient(420px circle at var(--mx) var(--my), oklch(1 0 0 / 0.10), transparent 45%),
+      linear-gradient(160deg, oklch(1 0 0 / 0.07), transparent 38%);
+  }
+  .glass::after{                          /* lens rim: bends what is behind it harder than the middle */
+    content:""; position:absolute; inset:0; border-radius: inherit; pointer-events:none; z-index:-1;
+    padding: 10px;
+    -webkit-backdrop-filter: blur(4px) brightness(1.15) saturate(2);
+    backdrop-filter: blur(4px) brightness(1.15) saturate(2);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  }
+  /* the stem that ties the window to the pin above it */
+  .glass .stem{
+    position:absolute; left: 50%; top: -15px; width: 1px; height: 15px;
+    background: linear-gradient(transparent, oklch(1 0 0 / 0.45));
+  }
+
+  .glass .g-head{ display:flex; align-items:flex-start; gap: 10px; margin-bottom: 10px; }
+  .glass .g-title{ flex: 1 1 auto; min-width: 0; }
+  .glass .g-title .label{ display:block; margin-bottom: 4px; font-size: 9.5px; }
+  .glass .g-title h3{
+    margin: 0; font-size: 16px; font-weight: 400; line-height: 1.25;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .glass .g-title .coords{ font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: .04em; }
+  .glass .g-x{
+    flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%;
+    border: 1px solid oklch(1 0 0 / 0.16); background: oklch(1 0 0 / 0.05);
+    color: var(--muted); cursor: pointer; font: 16px/1 var(--mono);
+  }
+  .glass .g-say{
+    font-size: 13.5px; line-height: 1.45; margin: 0 0 12px; color: var(--text);
+    padding: 9px 11px; border-radius: 12px; background: oklch(1 0 0 / 0.05);
+    border-left: 2px solid var(--line);
+  }
+  .glass .g-say.cannot{ border-left-color: var(--stop); }
+  .glass .g-say.marginal{ border-left-color: var(--warn); }
+  .glass .g-say.can{ border-left-color: var(--ok); }
+  .glass .g-say.authority{ border-left-color: var(--beam); }
+
+  .g-grid{ display:grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .ind{
+    border-radius: 16px; padding: 11px 12px 10px;
+    background: oklch(0.14 0.02 285 / 0.42);
+    border: 1px solid oklch(1 0 0 / 0.09);
+    min-width: 0; cursor: pointer; position: relative;
+    transition: background var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out), transform var(--dur) var(--ease-out);
+  }
+  @media (hover: hover){ .ind:hover{ background: oklch(0.18 0.03 285 / 0.55); border-color: oklch(1 0 0 / .2); } }
+  .ind:active{ transform: scale(.985); }
+  .ind:focus-visible{ outline: 2px solid var(--beam); outline-offset: 2px; }
+  .ind.active{ border-color: var(--beam); background: oklch(0.2 0.04 85 / 0.35); }
+  .ind .i-more{ display:block; margin-top: 7px; font-family: var(--mono); font-size: 8.5px; letter-spacing: .14em;
+                text-transform: uppercase; color: var(--beam); }
+  /* while the detail panel is open the window shrinks to a strip of four tabs */
+  .glass.compact .g-say, .glass.compact .g-foot, .glass.compact .i-cap, .glass.compact .chip,
+  .glass.compact .ends, .glass.compact .i-more, .glass.compact .meter .mark{ display: none; }
+  .glass.compact{ width: min(560px, calc(100vw - 28px)); padding-bottom: 14px; }
+  .glass.compact .g-grid{ grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .glass.compact .ind{ padding: 8px 9px 10px; }
+  .glass.compact .ind .i-lab{ min-height: 3.9em; font-size: 8px; }
+  .glass.compact .ind .i-num b{ font-size: 22px; }
+  .glass.compact .g-head{ margin-bottom: 8px; }
+  .glass.tight .ind .i-cap{ display: none; }
+  .glass.tight .g-say{ margin-bottom: 8px; }
+  /* on heavy frost the page's muted grey sinks into the glass; small text is lifted so
+     every label and caption keeps its contrast (the frost is the backdrop, never the text) */
+  .glass .g-title .label{ color: oklch(0.84 0.09 300); }
+  .glass .g-title .coords, .glass .ind .i-lab, .glass .ind .ends, .glass .ind .i-cap,
+  .glass .g-foot, .glass .g-foot a, .glass .ind .i-num .of, .glass .meter .mark span{ color: oklch(0.82 0.012 280); }
+  .glass .g-say{ background: oklch(0.14 0.02 285 / 0.4); }
+  .ind .i-lab{
+    font-family: var(--mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); line-height: 1.35; min-height: 2.7em;
+  }
+  .ind .i-num{
+    display:flex; align-items: baseline; gap: 4px; margin: 4px 0 7px; white-space: nowrap;
+  }
+  .ind .i-num b{
+    font-family: var(--mono); font-weight: 400; font-variant-numeric: tabular-nums;
+    font-size: 34px; line-height: 1; letter-spacing: -0.02em; color: oklch(0.985 0.005 90);
+    text-shadow: 0 1px 2px oklch(0 0 0 / .45);
+  }
+  .ind .i-num .of{ font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .ind.unknown .i-num b{ color: var(--muted); }
+
+  /* the meter: a coloured track (red-to-green, direction set per indicator),
+     a band for the range the instruments actually allow, a tick for the best
+     reading. When the instruments cannot see, the track is hatched and empty. */
+  .meter{ position: relative; height: 8px; border-radius: 99px; overflow: visible; }
+  .meter .track{
+    position:absolute; inset:0; border-radius: 99px; opacity: .88;
+    background: var(--grad);
+  }
+  .meter .band{
+    position:absolute; top: -3px; bottom: -3px; border-radius: 99px;
+    border: 1.5px solid oklch(1 0 0 / 0.9);
+    background: oklch(1 0 0 / 0.14);
+  }
+  .meter .band.open-right{ border-right-style: dashed; border-top-right-radius: 0; border-bottom-right-radius: 0; }
+  .meter .tick{
+    position:absolute; top: -5px; width: 3px; height: 18px; margin-left: -1.5px; border-radius: 2px;
+    background: #fff; box-shadow: 0 0 0 1.5px oklch(0 0 0 / .55);
+  }
+  .meter .mark{
+    position:absolute; top: 10px; width: 1px; height: 5px; background: var(--muted);
+  }
+  .meter .mark span{
+    position:absolute; top: 5px; left: -2px;
+    font-family: var(--mono); font-size: 8.5px; color: var(--muted); white-space: nowrap;
+  }
+  /* a reading the instruments cannot vouch for loses its colour: the red-to-green
+     track is a claim about meaning, so a suspect reading does not get to make it */
+  .meter.suspect .track{ filter: saturate(0.12); opacity: .45; }
+  .ind.unknown .meter .track{
+    background: repeating-linear-gradient(135deg, oklch(1 0 0 / .10) 0 4px, transparent 4px 8px);
+    opacity: 1; box-shadow: inset 0 0 0 1px oklch(1 0 0 / .12);
+  }
+  .ind .ends{
+    display:flex; justify-content: space-between; margin-top: 5px;
+    font-family: var(--mono); font-size: 8.5px; color: var(--muted);
+  }
+  .ind.has-marks .ends{ margin-top: 15px; }
+  .chip{
+    display:inline-block; margin-top: 8px; padding: 3px 8px; border-radius: 99px;
+    font-family: var(--mono); font-size: 8.5px; letter-spacing: .1em; text-transform: uppercase;
+    border: 1px solid currentColor; line-height: 1.3; white-space: normal;
+  }
+  .chip.high{ color: var(--ok); }
+  .chip.low{ color: var(--warn); }
+  .chip.none{ color: var(--muted); }
+  .chip.bad{ color: var(--stop); }
+  .ind .i-cap{
+    font-size: 11px; line-height: 1.38; color: var(--muted); margin-top: 6px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+
+  .glass .g-foot{
+    display:flex; justify-content: space-between; align-items: center; gap: 10px;
+    margin-top: 10px; font-family: var(--mono); font-size: 9.5px; color: var(--muted); letter-spacing: .06em;
+  }
+  .glass .g-foot a{ color: var(--muted); border-bottom: 1px solid var(--line); text-decoration: none; }
+  .glass .g-foot button{
+    background: none; border: 0; cursor: pointer; padding: 4px 0;
+    font: inherit; color: var(--beam); letter-spacing: .14em; text-transform: uppercase;
+    border-bottom: 1px solid color-mix(in oklch, var(--beam) 40%, transparent);
+  }
+  .glass .skel{ height: 104px; border-radius: 16px; background: oklch(1 0 0 / 0.05); animation: breathe 1.6s ease-in-out infinite; }
+  @keyframes breathe{ 50%{ background: oklch(1 0 0 / 0.09); } }
+
+  @media (max-width: 520px){
+    .glass{ padding: 13px 12px 10px; border-radius: 22px; }
+    .ind{ padding: 9px 10px 9px; }
+    .ind .i-num b{ font-size: 28px; }
+    .ind .i-cap{ display: none; }   /* the panel carries the long form on a phone */
+  }
+
+  /* ==========================================================
+     DETAIL PANEL — one statistic in full. SwissstyleContext V2/V4/V5: warm paper, near-black
+     ink, one red, Helvetica in two weights, mono only for numerals and labels, hairline
+     rules, a 12-column grid, no shadows on anything inside it, no rounded corners. It slides
+     up from the bottom edge of the map (the only motion) and the reading window above it
+     shrinks to a strip, so the pin and the numbers stay in view.
+     ========================================================== */
+  #detail{
+    --paper: oklch(0.972 0.002 90); --ink-s: oklch(0.185 0.005 260); --ink-s2: oklch(0.42 0.006 260);
+    --ink-s3: oklch(0.60 0.006 260); --rule-s: oklch(0.855 0.003 260); --red: oklch(0.545 0.205 27);
+    --sans: "Helvetica Neue", Helvetica, Arial, "Segoe UI", system-ui, sans-serif;
+    position: absolute; z-index: 25; left: 0; right: 0; bottom: 0; height: min(56%, 470px);
+    background: var(--paper); color: var(--ink-s); font: 400 15px/1.5 var(--sans); letter-spacing: -0.006em;
+    border-top: 2px solid var(--ink-s);
+    transform: translateY(101%); visibility: hidden;
+    transition: transform .34s cubic-bezier(.16,1,.3,1), visibility 0s linear .34s;
+    overflow-y: auto; overscroll-behavior: contain;
+  }
+  #detail.open{ transform: none; visibility: visible; transition: transform .34s cubic-bezier(.16,1,.3,1); }
+  #detail:focus{ outline: none; }
+  #detail .sw-grid{ display:grid; grid-template-columns: repeat(12, 1fr); gap: 0 24px; padding: 0 40px; max-width: 1360px; }
+  #detail .sw-top{ grid-column: 1 / 13; display:grid; grid-template-columns: subgrid; align-items: baseline;
+                   padding: 16px 0 14px; border-bottom: 1px solid var(--rule-s); position: sticky; top: 0; background: var(--paper); z-index: 1; }
+  #detail .sw-idx{ grid-column: 1 / 3; font: 400 11px/1 var(--mono); letter-spacing: .08em; color: var(--red); font-variant-numeric: tabular-nums; }
+  #detail h2{ grid-column: 3 / 9; margin: 0; font: 700 22px/1.15 var(--sans); letter-spacing: -0.02em; }
+  #detail .sw-nav{ grid-column: 9 / 13; justify-self: end; display:flex; gap: 22px; }
+  #detail .sw-nav button{ background:none; border:0; padding: 0 0 2px; cursor:pointer; color: var(--ink-s);
+    font: 400 11px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; border-bottom: 2px solid transparent; }
+  #detail .sw-nav button:hover{ border-bottom-color: var(--red); }
+  #detail .sw-nav button:focus-visible{ outline: none; box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--red); }
+  #detail .sw-fig{ grid-column: 1 / 3; padding: 22px 0 28px; }
+  #detail .sw-num{ font: 400 56px/0.95 var(--mono); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  #detail .sw-unit{ font: 400 11px/1.4 var(--mono); letter-spacing: .06em; color: var(--ink-s3); text-transform: uppercase; margin-top: 8px; }
+  #detail .sw-state{ display:inline-block; margin-top: 14px; font: 700 12px/1.3 var(--sans); padding-bottom: 3px; border-bottom: 2px solid var(--red); }
+  #detail .sw-body{ grid-column: 3 / 13; display:grid; grid-template-columns: repeat(10, 1fr); gap: 0 24px; padding: 22px 0 28px; }
+  #detail .sw-block{ grid-column: span 5; padding: 0 0 20px; border-top: 1px solid var(--rule-s); padding-top: 10px; }
+  #detail .sw-block h3{ margin: 0 0 6px; font: 400 10px/1.3 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-s3); }
+  #detail .sw-block p{ margin: 0 0 8px; max-width: 64ch; color: var(--ink-s2); font-size: 14.5px; text-wrap: pretty; }
+  #detail .sw-block p b{ color: var(--ink-s); font-weight: 700; }
+  #detail .sw-block a{ color: var(--ink-s); text-decoration: none; border-bottom: 1px solid var(--red); }
+  #detail .sw-here{ grid-column: 1 / 11; border-top: 2px solid var(--ink-s); padding-top: 10px; }
+  #detail dl{ display:grid; grid-template-columns: max-content 1fr; gap: 6px 18px; margin: 0; }
+  #detail dt{ font: 400 10px/1.5 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-s3); }
+  #detail dd{ margin: 0; font: 400 13px/1.45 var(--mono); color: var(--ink-s); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .shell.detail-open .layers{ visibility: hidden; }
+
+  /* narrow desktops: while a reading is open, the float bar folds to just the search so
+     it clears the centred window (the pin must be able to sit top-middle) */
+  @media (min-width: 901px) and (max-width: 1199px){
+    .shell.reading .floatbar{ width: 280px; }
+    .shell.reading .floatbar .calib, .shell.reading .floatbar .fb-foot, .shell.reading .floatbar .fb-privacy{ display: none; }
+  }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 900px){
+    body{ overflow: auto; }
+    .shell{ grid-template-columns: 1fr; grid-template-rows: auto auto auto; height:auto; }
+    header{ grid-column: 1; }
+    main{ height: 56vh; min-height: 320px; order: 2; }
+    aside{ order: 3; border-right: 0; border-top: 1px solid var(--line); overflow: visible;
+           position: static; width: auto; transform: none; visibility: visible; box-shadow: none; transition: none; }
+    .log-head #logClose{ display: none; }
+    .log-head{ position: static; }
+    #logOpen{ display: none; }
+    .floatbar{ left: 10px; right: 10px; top: 10px; width: auto; padding: 10px 12px 9px; }
+    .fb-privacy{ display: none; }
+    .shell.reading .floatbar .calib, .shell.reading .floatbar .fb-foot{ display: none; }
+    .layers{ top: calc(var(--fbh, 150px) + 18px); }
+    #detail{ height: 60%; }
+    .shell.detail-open .floatbar{ display: none; }   /* the pin and its four tabs need that strip */
+    #detail .sw-grid{ padding: 0 16px; gap: 0 12px; }
+    #detail .sw-top{ grid-template-columns: 1fr auto; }
+    #detail .sw-idx{ grid-column: 1 / 3; margin-bottom: 6px; }
+    #detail h2{ grid-column: 1 / 2; font-size: 18px; }
+    #detail .sw-nav{ grid-column: 2 / 3; gap: 14px; }
+    #detail .sw-fig{ grid-column: 1 / 13; padding: 14px 0 6px; display:flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+    #detail .sw-num{ font-size: 40px; }
+    #detail .sw-state{ margin-top: 0; }
+    #detail .sw-body{ grid-column: 1 / 13; grid-template-columns: 1fr; padding-top: 10px; }
+    #detail .sw-block, #detail .sw-here{ grid-column: 1 / 2; }
+    header .tagline{ flex-basis: 100%; }
+    /* a phone map is too short for the window beneath the pin, so while a reading
+       is open the map grows to nearly the full screen and the layer card steps aside */
+    .shell.reading main{ height: calc(100dvh - 24px); min-height: 560px; }
+    .shell.reading .layers{ display: none; }
+    .layers .zs-long{ display: none; }
+    .layers{ max-width: min(215px, calc(100vw - 40px)); padding: 10px 12px; }
+    .glass.compact .ind .i-lab{ font-size: 7.5px; }
+    .glass.compact .ind .i-num b{ font-size: 18px; }
+  }
+
+  a:focus-visible, button:focus-visible, input:focus-visible{
+    outline: 2px solid var(--beam); outline-offset: 2px;
+  }
+  ::selection{ background: color-mix(in oklch, var(--amethyst) 35%, transparent); }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <header>
+    <h1><span class="dot" aria-hidden="true"></span>Surge</h1>
+    <p class="tagline">What the public elevation data actually says about a place &mdash; including how much of it disagrees with itself.</p>
+    <span class="spacer"></span>
+    <nav><a href="how-it-works.html">How this works &amp; what it cannot tell you</a></nav>
+  </header>
+
+  <!-- The full observation log. It used to be the whole left column; the reading now lives
+       on the map, under the pin. On a desktop this is a drawer ("Full log"); on a phone it
+       sits below the map as before, so nothing here is ever out of reach. -->
+  <aside id="logDrawer" aria-label="Full observation log">
+    <div class="log-head">
+      <span class="label">Full observation log</span>
+      <button class="linkish" type="button" id="logClose">Close</button>
+    </div>
+    <div class="calib-note">
+      <span class="label">Why the three calibration places</span>
+      <p>These three places have answers we already know. Read them and watch the global
+        datasets get them wrong &mdash; that is the error you are carrying everywhere else.</p>
+    </div>
+
+    <div id="panel">
+      <div class="status">No point selected. Search a place, click the map, or check the instrument above.</div>
+    </div>
+  </aside>
+
+  <main>
+    <div id="space" aria-hidden="true"></div>
+    <div id="map"></div>
+
+    <!-- On the map, top left: search, the three known answers, how a click behaves, the log. -->
+    <div class="floatbar" id="floatbar">
+      <div class="search">
+        <form id="searchForm" autocomplete="off">
+          <input id="q" type="search" name="q" placeholder="Search a place, or click the map&hellip;"
+                 aria-label="Search for a place" spellcheck="false" />
+          <button type="submit">Read</button>
+        </form>
+      </div>
+      <div class="calib" title="These three places have answers we already know. Read them and watch the global datasets get them wrong.">
+        <span class="label">Check the instrument</span>
+        <div class="row">
+          <button type="button" data-lat="52.3086" data-lon="4.7639" data-name="Schiphol, Netherlands (true ground ≈ −4 m)">Schiphol &minus;4&nbsp;m</button>
+          <button type="button" data-lat="45.4340" data-lon="12.3390" data-name="Venice, Italy (true ground ≈ 1 m)">Venice ≈1&nbsp;m</button>
+          <button type="button" data-lat="29.9647" data-lon="-90.0776" data-name="Mid-City, New Orleans (true ground ≈ 0 m, behind levees)">New Orleans ≈0&nbsp;m</button>
+        </div>
+      </div>
+      <div class="fb-foot">
+        <div class="mode" role="radiogroup" aria-label="What a click on the map does">
+          <span class="label">Click</span>
+          <button type="button" role="radio" aria-checked="true" data-mode="pin">Drops a pin</button>
+          <button type="button" role="radio" aria-checked="false" data-mode="pan">Just pans</button>
+        </div>
+        <button class="linkish" type="button" id="useLoc">My location</button>
+        <button class="linkish" type="button" id="logOpen">Full log</button>
+      </div>
+      <p class="fb-privacy">Nothing you type is stored, logged, or put in the address bar.</p>
+      <p class="fb-status" id="fbStatus" aria-live="polite" hidden></p>
+    </div>
+
+    <!-- The detail for one statistic: slides up from the bottom, Swiss language. -->
+    <section id="detail" class="swiss" aria-hidden="true" aria-labelledby="dTitle" tabindex="-1"></section>
+    <div class="layers">
+      <span class="label">Layers</span>
+      <label class="row">
+        <input type="checkbox" id="femaToggle" checked />
+        <span>FEMA flood hazard zones<br /><span class="muted" style="font-size:11px">United States only &middot; the regulatory map</span></span>
+      </label>
+      <!-- What FEMA can show at the CURRENT zoom, rewritten on every zoom change.
+           FEMA's own server refuses to draw flood zones wider than 1:36,112
+           (map zoom ~14). Below that, the layer is drawn by a stated trick, and
+           below zoom ~10 it is replaced by where FEMA maps exist at all. -->
+      <div class="zoomstate" id="zoomState" aria-live="polite"></div>
+      <div class="layer-actions">
+        <button class="linkish" type="button" id="toGlobe">Whole Earth</button>
+        <button class="linkish" type="button" id="toZones" hidden>Zoom in to zones</button>
+      </div>
+      <details id="legendBox" open>
+        <summary>Legend</summary>
+        <ul class="legend">
+          <li class="lg-far lg-head">Overview <span>&middot; generalized</span></li>
+          <li class="lg-far"><span class="sw ov-high"></span><span>1% a year, incl. floodway</span></li>
+          <li class="lg-far"><span class="sw ov-mod"></span><span>0.2% a year</span></li>
+          <li class="lg-far"><span class="sw ov-lev"></span><span>Lower risk <em>only because of a levee</em></span></li>
+          <li class="lg-far"><span class="sw ov-und"></span><span>Not studied (zone D), faint on purpose</span></li>
+          <li class="lg-far" style="color:var(--muted)"><span class="sw" style="visibility:hidden"></span><span>Stronger colour = more of the ground is mapped floodplain. Not a depth, not a forecast. Blank: no mapped zone, or no digital FEMA map.</span></li>
+          <li class="lg-far"><span class="sw avail"></span><span>Alaska, Hawaii, territories: a FEMA map exists (not cached)</span></li>
+          <li class="lg-near lg-head">FEMA&rsquo;s own legend</li>
+          <li class="lg-near"><img alt="" width="14" height="14" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAASElEQVQ4jWNhePJfmIGRQYSBGuA/wxsWqGFqVDGQkYGBhYHKgGXUQIoBC+VGoIJRAykHLFQwAwWMGjgywvA/wxtQSUsVADQLAIYFCFpGQeQIAAAAAElFTkSuQmCC" /><span>1% a year (A, AE, V, VE) &mdash; the Special Flood Hazard Area</span></li>
+          <li class="lg-near"><img alt="" width="14" height="14" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAuUlEQVQ4ja3UQQ6CMBAF0N9kbqA7914D7qD3ICbEFUhADgYrPYjuuENxFAmk1jbt/F2nyWunbUp46A0UtlhE7xRcUU9tFjUGmrD9t9YdUifW5LVlFYCWY8aSe+/EqtPFOk+S2AxKYRzyuQAfLLn16I7p+gxjMQ5JYn/BEMwKhmI/wRjMAGOxFSiBzaAUxqEyK9AKYWVWgNrzVQRr8vq9MZLCqqlLKxiCWcFQ7ANqDPzTLuODcYyX8bJGMKJ64fm6rYgAAAAASUVORK5CYII=" /><span>Regulatory floodway</span></li>
+          <li class="lg-near"><img alt="" width="14" height="14" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAASElEQVQ4jWP538YgzPCXQYSBGoCZ4Q0L2LB/DGpUMZCBgYGFWgbBwKiBlAMWKpiBAkYNpBywUMEMFDBq4MgIQ2aGN1QzDWgWAACnB/xE+yREAAAAAElFTkSuQmCC" /><span>0.2% a year (shaded X)</span></li>
+          <li class="lg-near"><img alt="" width="14" height="14" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAABA0lEQVQ4jWPJzc31ZaAiYAERnlynGVTZH4EFmvYxMOy9h19Toinn2wT978LIYrd/yjFs/2YKMRBkmArzMwaHBQwMB+/jNyxEh+FtixEDimFgwM6AMBAEiDVsdSgWw5AA2ED7OQwMz54xUGwYCMBdSA3DiDKQGMMO3mdgiNrFwBAcTMBAYg1zWMDAICUF4bNQwzBkwEJNw7AaSIlhGAZSahiKgdQwDG4gKG9izU4kGgY3ED2jk2sYUQmbWMOclYgwkFjDGp0YGKJsGBgmvcdjICmG1dkzMNz5i+RCUOEIKs+QDavbi8hOuADImyCXgQwDmwEzEFQwgjAcCEAyOjEA5E1kAADxPm4j14ZSEAAAAABJRU5ErkJggg==" /><span>Lower risk <em>only because of a levee</em></span></li>
+          <li class="lg-near"><img alt="" width="14" height="14" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAASUlEQVQ4jWP59KRSmIHxrwgDNcB/5jcsEMP+qVHFQEYGBhYGKgOWUQMpBiyUG4EKRg2kHLBQwQwUMGrgyAjD/8xvQCUtVQDQLABecAvHjN/G9AAAAABJRU5ErkJggg==" /><span>Undetermined (D)</span></li>
+        </ul>
+      </details>
+      <p class="note">There is deliberately no projected-water overlay here. <a href="how-it-works.html#nobathtub">Why not.</a></p>
+    </div>
+    <div class="attrib">
+      Basemap &copy; <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a>
+      &copy; OpenMapTiles &middot; Data from <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>
+    </div>
+  </main>
+
+</div>
+
+<script src="https://unpkg.com/maplibre-gl@5.9.0/dist/maplibre-gl.js"></script>
+<script src="space.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // ==========================================================================
+  // CONSTANTS — every figure here is sourced and dated. See how-it-works.html
+  // ==========================================================================
+
+  // IPCC AR6 WG1, global mean sea level rise by 2050 relative to 1995-2014:
+  // 0.15-0.23 m (SSP1-1.9) through 0.20-0.29 m (SSP5-8.5).
+  // NOAA 2022 Interagency Sea Level Rise Technical Report: 10-12 in (0.25-0.30 m)
+  // along the US coastline by 2050.
+  // We use 0.25 m as the representative mid-century figure and always show the range.
+  var SLR_2050_M = 0.25;
+  var SLR_2050_RANGE = '0.15-0.30 m';
+
+  var ELEV_SOURCES = [
+    {
+      key: 'copernicus',
+      name: 'Copernicus DEM GLO-90',
+      res: '90 m',
+      model: 'DSM',
+      vintage: '2021 release',
+      note: 'includes buildings and vegetation',
+      href: 'https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM'
+    },
+    {
+      key: 'srtm30m',
+      name: 'SRTM 1 arc-second',
+      res: '30 m',
+      model: 'DSM',
+      vintage: 'flown 2000',
+      note: 'radar; returns the top of canopy and rooftops',
+      href: 'https://lpdaac.usgs.gov/products/srtmgl1v003/'
+    },
+    {
+      // Read straight from the public Terrarium tiles on AWS Open Data (the same
+      // Mapzen dataset Open Topo Data serves), decoded from pixel colour. Changed
+      // 2026-09-23: Open Topo Data's public API stopped sending a CORS header, so
+      // no browser can read it; the tiles send Access-Control-Allow-Origin: *.
+      key: 'mapzen',
+      name: 'Mapzen / Terrarium',
+      res: '~30 m',
+      model: 'mixed',
+      vintage: 'composite',
+      note: 'a blend of national and global sources',
+      href: 'https://registry.opendata.aws/terrain-tiles/'
+    },
+    {
+      // USGS Elevation Point Query Service: 3DEP bare earth at the best resolution
+      // USGS holds for the point, often 1 m lidar. Replaces Open Topo Data's
+      // ned10m (same CORS reason as above). Public domain, US only.
+      key: 'ned10m',
+      name: 'USGS 3DEP (best available)',
+      res: '1-10 m',
+      model: 'DTM',
+      vintage: 'rolling',
+      note: 'bare earth; United States only',
+      href: 'https://apps.nationalmap.gov/epqs/'
+    }
+  ];
+
+  // ==========================================================================
+  // MAP
+  // ==========================================================================
+  // Opens on the whole planet. Surge is a global tool whose best answers happen
+  // to be American; starting on a globe says so before a word is read.
+  // A link may open on a chosen view: #at=zoom/lat/lng (read once, never written back, so
+  // where you go on the map never ends up in the address bar).
+  var AT = /(?:^#|&)at=([\d.]+)\/(-?[\d.]+)\/(-?[\d.]+)/.exec(location.hash || '');
+  var map = new maplibregl.Map({
+    container: 'map',
+    style: 'https://tiles.openfreemap.org/styles/positron',
+    center: AT ? [+AT[3], +AT[2]] : [-62, 24],
+    zoom: AT ? Math.min(19, +AT[1]) : 1.8,
+    minZoom: 0,
+    maxZoom: 19,
+    attributionControl: false
+  });
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
+  try { if (window.SurgeSpace) window.SurgeSpace.attach(map, document.getElementById('space')); } catch (e) { /* decoration */ }
+
+  // Globe projection (MapLibre 5+). Set on every style load, because a style
+  // swap resets projection. If a browser cannot do it, the flat map still works.
+  map.on('style.load', function () {
+    try { map.setProjection({ type: 'globe' }); } catch (e) { /* flat fallback */ }
+    try {
+      map.setSky({
+        'sky-color': '#0b0a14', 'horizon-color': '#1b1830', 'fog-color': '#0b0a14',
+        'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 0.9, 5, 0.4, 8, 0]
+      });
+    } catch (e) { /* sky is decoration; never let it break the map */ }
+  });
+
+  var markerEl = document.createElement('div');
+  markerEl.className = 'marker-pin';
+  markerEl.setAttribute('aria-label', 'Reading pin. Drag to move it.');
+  // anchor bottom: the needle's tip is the point being read, not the lit head.
+  var marker = new maplibregl.Marker({ element: markerEl, anchor: 'bottom', draggable: true });
+  var markerPlaced = false;
+
+  // ==========================================================================
+  // FEMA AT EVERY ZOOM — and saying out loud which kind of answer each zoom gets.
+  //
+  // FEMA's NFHL MapServer publishes a scale limit on the Flood Hazard Zones layer
+  // (id 28): minScale 1:36,111.9, which is Web-Mercator zoom 14 at 256 px tiles.
+  // Ask for a zone tile any wider and the server returns an empty PNG. That is
+  // why the old overlay "only showed up almost all the way in".
+  //
+  // The export endpoint decides scale from the tile's width in metres divided by
+  // its width in inches (pixels / dpi). So a zoom-12 tile requested at dpi 22
+  // looks, to the server, like a zoom-14 request, and it draws the real zones —
+  // shrunk. Measured live (2026-09-23, Houston / Miami / New York tiles):
+  //   z13-z11  0.2-0.4 s per tile    z10  0.3-1.2 s
+  //   z9       up to 10.6 s          z8   up to 25.8 s
+  // So the trick stops at zoom 10. Beyond that, polygons are thinner than a pixel
+  // anyway, and the honest thing to draw is FEMA's own "NFHL Availability" layer
+  // (id 0, drawn by FEMA at every scale wider than 1:72,225): where a digital
+  // flood map EXISTS. The panel tells the reader which of the three they are seeing.
+  // dpi is set just under each band's boundary so rounding never tips a tile over.
+  // ==========================================================================
+  var FEMA_EXPORT = 'https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/export' +
+                    '?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256' +
+                    '&format=png32&transparent=true&f=image';
+  var FEMA_BANDS = [
+    // tile zoom, dpi, which layer
+    { z: 14, dpi: 90, layer: 28, native: true },
+    { z: 13, dpi: 45, layer: 28 },
+    { z: 12, dpi: 22, layer: 28 },
+    { z: 11, dpi: 11, layer: 28 },
+    { z: 10, dpi: 5,  layer: 28 }
+  ];
+  var FEMA_LAYER_IDS = [];
+
+  function addFemaLayers() {
+    FEMA_BANDS.forEach(function (b) {
+      var id = 'fema-z' + b.z;
+      map.addSource(id, {
+        type: 'raster',
+        tiles: [FEMA_EXPORT + '&layers=show:' + b.layer + '&dpi=' + b.dpi],
+        tileSize: 256,
+        minzoom: b.z,
+        maxzoom: b.native ? 19 : b.z,
+        attribution: 'FEMA NFHL'
+      });
+      // raster tile zoom ROUNDS the map zoom, so each band owns map zooms z±0.5
+      map.addLayer({
+        id: id, type: 'raster', source: id,
+        minzoom: b.z - 0.5, maxzoom: b.native ? 24 : b.z + 0.5,
+        // shrunk tiles carry thinner lines, so they get a little more strength to meet the overview
+        paint: { 'raster-opacity': b.z <= 12 ? 0.74 : 0.6, 'raster-fade-duration': 150 }
+      });
+      FEMA_LAYER_IDS.push(id);
+    });
+    // ZOOM 0-9: THE OVERVIEW. FEMA's own zone renders for the lower 48, fetched once at
+    // zoom 10 a few states per batch (tools/fema-overview/crawl.py), classified by colour
+    // and generalized by exact area-averaging (build_overview.py). Served from this folder,
+    // so it costs FEMA's server nothing and draws instantly. Opacity = how much of the
+    // ground is mapped floodplain. Hands off to the live FEMA tiles at map zoom 9.5.
+    map.addSource('fema-overview', {
+      type: 'raster',
+      tiles: [OVERVIEW_URL],
+      tileSize: 256, minzoom: 0, maxzoom: 9,
+      bounds: [-125.0, 24.3, -66.8, 49.5],
+      attribution: 'FEMA NFHL (generalized)'
+    });
+    map.addLayer({
+      id: 'fema-overview', type: 'raster', source: 'fema-overview', maxzoom: 9.5,
+      paint: {
+        'raster-opacity': ['interpolate', ['linear'], ['zoom'], 0, 0.95, 7, 0.85, 9.5, 0.7],
+        'raster-fade-duration': 200,
+        'raster-resampling': 'linear'
+      }
+    });
+    FEMA_LAYER_IDS.push('fema-overview');
+
+    // Alaska, Hawaii and the territories are not in the cache yet, so there the honest
+    // zoomed-out answer is still FEMA's "NFHL Availability" layer: where a digital map
+    // EXISTS. Each gets its own bounded source so none of it paints over the lower 48.
+    // FEMA draws availability in red; availability is not danger, so it is hue-shifted.
+    [['ak', [-180, 51, -129.5, 71.6]], ['hi', [-160.6, 18.8, -154.6, 22.4]],
+     ['pr', [-68.1, 17.6, -64.4, 18.6]], ['gu', [144.5, 13.1, 146.2, 20.6]],
+     ['as', [-171.2, -14.6, -168.1, -11.0]]].forEach(function (a) {
+      var id = 'fema-avail-' + a[0];
+      map.addSource(id, {
+        type: 'raster', tiles: [FEMA_EXPORT + '&layers=show:0&dpi=96'],
+        tileSize: 256, minzoom: 0, maxzoom: 9, bounds: a[1], attribution: 'FEMA NFHL'
+      });
+      map.addLayer({
+        id: id, type: 'raster', source: id, maxzoom: 9.5,
+        paint: { 'raster-opacity': 0.42, 'raster-hue-rotate': 225, 'raster-contrast': 0.2 }
+      });
+      FEMA_LAYER_IDS.push(id);
+    });
+    setFemaVisible(document.getElementById('femaToggle').checked);
+  }
+
+  // The overview's tiles live beside this page. Most of the lower 48 has no mapped zone
+  // at any given tile, and a static host answers a missing tile with a 404 page that the
+  // map then fails to decode. So when the manifest has loaded, a tiny protocol answers
+  // "empty" for tiles the manifest says do not exist, and only real tiles are fetched.
+  var OVERVIEW_URL = 'tiles/fema-overview/{z}/{x}/{y}.png';
+  var OVERVIEW = null;             // manifest.json, once loaded
+  var EMPTY_PNG = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg=='), function (c) { return c.charCodeAt(0); }).buffer;
+  try {
+    if (maplibregl.addProtocol) {
+      var ovIndex = null;
+      maplibregl.addProtocol('surgeov', function (params, abort) {
+        var m = /surgeov:\/\/(\d+)\/(\d+)\/(\d+)/.exec(params.url);
+        if (!m) return Promise.reject(new Error('bad overview url'));
+        // (a fresh copy every time: the map may transfer the buffer to a worker)
+        if (ovIndex && !(ovIndex[m[1]] && ovIndex[m[1]].has(m[2] + '/' + m[3]))) {
+          return Promise.resolve({ data: EMPTY_PNG.slice(0) });
+        }
+        return fetch('tiles/fema-overview/' + m[1] + '/' + m[2] + '/' + m[3] + '.png', { signal: abort.signal })
+          .then(function (r) { return r.ok ? r.arrayBuffer() : EMPTY_PNG.slice(0); })
+          .then(function (b) { return { data: b }; });
+      });
+      OVERVIEW_URL = 'surgeov://{z}/{x}/{y}';
+      window.__surgeOverviewIndex = function (tiles) {
+        ovIndex = {};
+        Object.keys(tiles).forEach(function (z) { ovIndex[z] = new Set(tiles[z]); });
+      };
+    }
+  } catch (e) { /* plain URLs still work; a missing tile just logs */ }
+  var overviewReady = fetch('tiles/fema-overview/manifest.json')
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (m) {
+      OVERVIEW = m;
+      if (m && m.tiles && window.__surgeOverviewIndex) window.__surgeOverviewIndex(m.tiles);
+      updateZoomState();
+    })
+    .catch(function () { updateZoomState(); });
+
+  function setFemaVisible(on) {
+    FEMA_LAYER_IDS.forEach(function (id) {
+      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
+    });
+    updateZoomState();
+  }
+
+  function viewTouchesUS() {
+    var b = map.getBounds();
+    var c = map.getCenter();
+    if (map.getZoom() < 3) return true;          // the whole hemisphere is in view
+    return inUS(c.lat, c.lng) ||
+           inUS(b.getNorth(), b.getWest()) || inUS(b.getSouth(), b.getEast()) ||
+           inUS(b.getNorth(), b.getEast()) || inUS(b.getSouth(), b.getWest());
+  }
+
+  var zoomStateEl = document.getElementById('zoomState');
+  var toZonesBtn = document.getElementById('toZones');
+  function updateZoomState() {
+    var on = document.getElementById('femaToggle').checked;
+    var z = map.getZoom();
+    var html, showZoomBtn = false;
+    if (!on) {
+      html = '<span class="tag off">Layer off</span><br />The FEMA layer is switched off.';
+    } else if (!viewTouchesUS()) {
+      html = '<span class="tag off">Outside the US</span><br />FEMA maps the United States only. ' +
+             'There is no free global flood-zone map to show here &mdash; ' +
+             'your national flood authority is the real answer.';
+    } else if (z >= 13.5) {
+      html = '<span class="tag native">Native scale</span><br />FEMA’s flood zones, drawn by FEMA at ' +
+             'the scale its server allows. This is the regulatory map as published.';
+    } else if (z >= 9.5) {
+      html = '<span class="tag stretched">Real zones, drawn smaller</span><br />FEMA’s server refuses ' +
+             'to draw zones wider than zoom 14, so each tile here is requested <em>as if</em> zoomed in and ' +
+             'shrunk to fit. Same data, finer than your screen can show; tiles can take a second or two.';
+    } else if (OVERVIEW) {
+      // Say what this is, where it came from, when, and what it leaves out, on the same
+      // card that says which layer is showing (no separate fine print to go looking for).
+      var missing = (OVERVIEW.batches_all || []).filter(function (b) {
+        return (OVERVIEW.batches_done || []).indexOf(b) < 0;
+      });
+      // (the short half always shows; the long half steps aside on a phone, where the card
+      // would otherwise cover the globe. The Why link carries the rest.)
+      html = '<span class="tag far">Overview &middot; generalized</span><br />FEMA&rsquo;s own flood zones for ' +
+             'the lower 48, simplified to fit this scale<span class="zs-long">. The stronger the colour, the more of the ' +
+             'ground there is mapped floodplain</span>. Source: FEMA NFHL, cached ' + fmtDate(OVERVIEW.cached_through) + '. ' +
+             (missing.length ? 'Not cached yet: ' + missing.join(', ') + '. ' : '') +
+             '<span class="zs-long">Alaska, Hawaii and territories show only where a map exists. </span>Real zones from zoom 10.';
+      showZoomBtn = true;
+    } else {
+      html = '<span class="tag far">Too far out for zones</span><br />At this scale a flood zone is ' +
+             'thinner than a pixel, and the zoomed-out overview has not loaded. ' +
+             'Zones appear from zoom 10.';
+      showZoomBtn = true;
+    }
+    zoomStateEl.innerHTML = html + (on ? ' <a href="how-it-works.html#femazoom">Why.</a>' : '');
+    toZonesBtn.hidden = !showZoomBtn;
+    var lb = document.getElementById('legendBox');
+    if (lb) lb.classList.toggle('far', on && z < 9.5);
+  }
+  function fmtDate(iso) {
+    var d = iso && /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+    if (!d) return 'on an unknown date';
+    var mo = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][+d[2] - 1];
+    return mo + ' ' + (+d[3]) + ', ' + d[1];
+  }
+
+  map.on('load', function () {
+    addFemaLayers();
+    updateZoomState();
+  });
+  map.on('zoomend', updateZoomState);
+  map.on('moveend', updateZoomState);
+
+  document.getElementById('femaToggle').addEventListener('change', function (e) {
+    setFemaVisible(e.target.checked);
+  });
+  document.getElementById('toGlobe').addEventListener('click', function () {
+    closeReadout();
+    map.flyTo({ center: [map.getCenter().lng, 20], zoom: 1.8, duration: 1400 });
+  });
+  toZonesBtn.addEventListener('click', function () {
+    map.flyTo({ zoom: 10.2, duration: 1200 });
+  });
+  if (window.matchMedia && window.matchMedia('(max-width: 900px)').matches) {
+    document.getElementById('legendBox').removeAttribute('open');   // keep the phone map visible
+  }
+
+  // WHAT A CLICK DOES, her toggle: drop a pin, or do nothing so the map can be explored
+  // freely (dragging always pans in both modes). Remembered per browser, if it can be.
+  var clickMode = 'pin';
+  try { if (localStorage.getItem('surge.clickMode') === 'pan') clickMode = 'pan'; } catch (e) {}
+  function setClickMode(m) {
+    clickMode = m;
+    Array.prototype.forEach.call(document.querySelectorAll('.mode button'), function (b) {
+      b.setAttribute('aria-checked', b.dataset.mode === m ? 'true' : 'false');
+    });
+    document.querySelector('.shell').classList.toggle('pan-mode', m === 'pan');
+    try { localStorage.setItem('surge.clickMode', m); } catch (e) {}
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.mode button'), function (b) {
+    b.addEventListener('click', function () { setClickMode(b.dataset.mode); });
+  });
+  setClickMode(clickMode);
+  map.on('click', function (e) {
+    if (clickMode !== 'pin') return;
+    read(e.lngLat.lat, e.lngLat.lng, null);
+  });
+
+  // THE LOG DRAWER (desktop) and the measurements the layout needs
+  function setLog(open) {
+    document.querySelector('.shell').classList.toggle('log-open', open);
+    if (open) document.getElementById('logDrawer').scrollTop = 0;
+  }
+  document.getElementById('logOpen').addEventListener('click', function () {
+    setLog(!document.querySelector('.shell').classList.contains('log-open'));
+  });
+  document.getElementById('logClose').addEventListener('click', function () { setLog(false); });
+  function measureChrome() {
+    var sh = document.querySelector('.shell'), hd = document.querySelector('header'), fb = document.getElementById('floatbar');
+    if (hd) sh.style.setProperty('--hdr', hd.offsetHeight + 'px');
+    if (fb) sh.style.setProperty('--fbh', fb.offsetHeight + 'px');
+  }
+  window.addEventListener('resize', measureChrome);
+  measureChrome();
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    if (document.getElementById('detail').classList.contains('open')) closeDetail();
+    else if (document.querySelector('.shell').classList.contains('log-open')) setLog(false);
+  });
+  marker.on('dragend', function () {
+    var ll = marker.getLngLat();
+    read(ll.lat, ll.lng, null);
+  });
+  markerEl.addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (lastCtx) openReadout(lastCtx, null);
+  });
+
+  // ==========================================================================
+  // NETWORK HELPERS
+  // Rate limits respected deliberately:
+  //   Open Topo Data public API — 1 call/sec, 1000 calls/day (their stated limit)
+  //   Nominatim — 1 request/sec, no client-side autocomplete (their stated policy)
+  //   Open-Meteo — 600/min free non-commercial
+  // Requests fire only on an explicit user action. Never on map movement.
+  // ==========================================================================
+  var lastOtd = 0;
+  function otdThrottle() {
+    var wait = Math.max(0, 1100 - (Date.now() - lastOtd));
+    lastOtd = Date.now() + wait;
+    return new Promise(function (r) { setTimeout(r, wait); });
+  }
+
+  var cache = Object.create(null);
+  function cacheKey(lat, lon) { return lat.toFixed(5) + ',' + lon.toFixed(5); }
+
+  function jget(url, timeoutMs) {
+    var ctl = new AbortController();
+    var t = setTimeout(function () { ctl.abort(); }, timeoutMs || 15000);
+    return fetch(url, { signal: ctl.signal })
+      .then(function (r) {
+        clearTimeout(t);
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .catch(function (err) { clearTimeout(t); throw err; });
+  }
+
+  // --- elevation readers. Each returns {value|null, failed:bool} --------------
+  // A null reading and a failed reading are DIFFERENT and must never share a
+  // branch: "no data here" is an answer, "we could not ask" is not.
+  function readCopernicus(lat, lon) {
+    return jget('https://api.open-meteo.com/v1/elevation?latitude=' + lat + '&longitude=' + lon)
+      .then(function (d) {
+        var v = (d && Array.isArray(d.elevation)) ? d.elevation[0] : null;
+        return { value: (typeof v === 'number') ? v : null, failed: false };
+      })
+      .catch(function () { return { value: null, failed: true }; });
+  }
+
+  function readOtd(dataset, lat, lon) {
+    return otdThrottle().then(function () {
+      return jget('https://api.opentopodata.org/v1/' + dataset +
+                  '?locations=' + lat + ',' + lon);
+    }).then(function (d) {
+      var r = (d && d.results && d.results[0]) ? d.results[0] : null;
+      var v = r ? r.elevation : null;
+      return { value: (typeof v === 'number') ? v : null, failed: false };
+    }).catch(function () { return { value: null, failed: true }; });
+  }
+
+  // Terrarium: elevation = R*256 + G + B/256 - 32768, in metres (bathymetry
+  // included, so open sea reads negative). z15 is the deepest zoom published.
+  function readTerrarium(lat, lon) {
+    var z = 15, n = Math.pow(2, z);
+    var x = (lon + 180) / 360 * n;
+    var lr = lat * Math.PI / 180;
+    var y = (1 - Math.log(Math.tan(lr) + 1 / Math.cos(lr)) / Math.PI) / 2 * n;
+    var tx = Math.floor(x), ty = Math.floor(y);
+    var px = Math.min(255, Math.floor((x - tx) * 256)), py = Math.min(255, Math.floor((y - ty) * 256));
+    var ctl = new AbortController();
+    var t = setTimeout(function () { ctl.abort(); }, 15000);
+    return fetch('https://s3.amazonaws.com/elevation-tiles-prod/terrarium/' + z + '/' + tx + '/' + ty + '.png',
+                 { signal: ctl.signal })
+      .then(function (r) { clearTimeout(t); if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
+      .then(function (b) { return createImageBitmap(b); })
+      .then(function (bmp) {
+        var c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height;
+        var g = c.getContext('2d', { willReadFrequently: true });
+        g.drawImage(bmp, 0, 0);
+        var d = g.getImageData(px, py, 1, 1).data;
+        return { value: d[0] * 256 + d[1] + d[2] / 256 - 32768, failed: false };
+      })
+      .catch(function () { clearTimeout(t); return { value: null, failed: true }; });
+  }
+
+  // USGS EPQS answers -1000000 where it has no coverage: an answer, not a failure.
+  function readEpqs(lat, lon) {
+    return jget('https://epqs.nationalmap.gov/v1/json?x=' + lon + '&y=' + lat +
+                '&units=Meters&wkid=4326&includeDate=false', 20000)
+      .then(function (d) {
+        var v = d ? parseFloat(d.value) : NaN;
+        return { value: (isFinite(v) && v > -999999) ? v : null, failed: false,
+                 res: d && d.resolution ? d.resolution : null };
+      })
+      .catch(function () { return { value: null, failed: true }; });
+  }
+
+  function inUS(lat, lon) {
+    // Deliberately generous bounding boxes, used ONLY to decide whether it is
+    // worth spending a rate-limited call. A false positive costs one wasted
+    // request; a false negative would silently hide the best dataset, so the
+    // boxes err wide.
+    var conus = lat > 24 && lat < 50 && lon > -125 && lon < -66;
+    var ak    = lat > 51 && lat < 72 && lon > -170 && lon < -129;
+    var hi    = lat > 18 && lat < 23 && lon > -161 && lon < -154;
+    return conus || ak || hi;
+  }
+
+  function readFema(lat, lon) {
+    var url = 'https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28/query' +
+              '?geometry=' + lon + ',' + lat +
+              '&geometryType=esriGeometryPoint&inSR=4326' +
+              '&spatialRel=esriSpatialRelIntersects' +
+              '&outFields=FLD_ZONE,ZONE_SUBTY,SFHA_TF,STATIC_BFE,DFIRM_ID' +
+              '&returnGeometry=false&f=json';
+    return jget(url, 20000)
+      .then(function (d) {
+        if (d && d.error) return { failed: true };
+        var f = (d && d.features && d.features[0]) ? d.features[0].attributes : null;
+        return { attrs: f, failed: false };   // attrs === null means "asked, no zone here"
+      })
+      .catch(function () { return { failed: true }; });
+  }
+
+  // ==========================================================================
+  // GEOCODING
+  // Nominatim policy forbids client-side autocomplete, so this fires only on
+  // submit. The address is sent to Nominatim and nowhere else, is never written
+  // to the URL, and is not retained after the reading is rendered.
+  // ==========================================================================
+  function geocode(q) {
+    var url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=' +
+              encodeURIComponent(q);
+    return jget(url, 20000).then(function (d) {
+      if (!Array.isArray(d) || !d.length) return null;
+      return { lat: parseFloat(d[0].lat), lon: parseFloat(d[0].lon), name: d[0].display_name };
+    });
+  }
+
+  // ==========================================================================
+  // RENDER
+  // ==========================================================================
+  var panel = document.getElementById('panel');
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+    });
+  }
+  // toFixed(1) turns -0.0128 into the string "-0.0", which reads as a typo rather
+  // than as a measurement. Normalise the negative zero, keep everything else.
+  function m(n) { var s = n.toFixed(1); if (s === '-0.0') s = '0.0'; return s + ' m'; }
+
+  function setStatus(msg) {
+    // the log lives in a drawer now, so the same words also show on the map
+    var fs = document.getElementById('fbStatus');
+    if (fs) { fs.textContent = msg; fs.hidden = !msg; measureChrome(); }
+    panel.innerHTML = '<div class="status">' + esc(msg) + '</div>';
+  }
+
+  function render(ctx) {
+    var readings = ctx.readings;
+    var got = readings.filter(function (r) { return r.value !== null; });
+    var html = '';
+
+    // ---- ENTRY 01 — WHERE -------------------------------------------------
+    html += '<div class="entry"><span class="label">Entry 01 &mdash; Where</span>';
+    html += '<h2>' + esc(ctx.name || 'Selected point') + '</h2>';
+    html += '<p class="src-line">' + ctx.lat.toFixed(5) + ', ' + ctx.lon.toFixed(5) + '</p>';
+    html += '</div>';
+
+    // ---- ENTRY 02 — THE READINGS -----------------------------------------
+    html += '<div class="entry"><span class="label">Entry 02 &mdash; What the datasets say</span>';
+    if (!got.length) {
+      html += '<p class="lead">Every elevation source either failed or has no coverage here. ' +
+              'That is not a reading of zero &mdash; it is no reading at all.</p>';
+    } else {
+      html += '<table class="readings"><thead><tr>' +
+              '<th>Dataset</th><th class="num">Elevation</th></tr></thead><tbody>';
+      readings.forEach(function (r) {
+        var s = r.src;
+        var val;
+        if (r.failed)          val = '<span class="muted">could not ask</span>';
+        else if (r.value === null) val = '<span class="muted">no coverage</span>';
+        else                   val = m(r.value);
+        var cls = s.model === 'DTM' ? 'dtm' : (s.model === 'DSM' ? 'dsm' : 'muted');
+        var resTxt = r.res ? (Math.round(r.res * 10) / 10) + ' m here' : s.res;
+        html += '<tr><td><span class="ds">' + esc(s.name) + '</span>' +
+                '<span class="meta">' + esc(resTxt) + ' &middot; <span class="' + cls + '">' +
+                esc(s.model) + '</span> &middot; ' + esc(s.note) + '</span></td>' +
+                '<td class="num">' + val + '</td></tr>';
+      });
+      html += '</tbody></table>';
+
+      if (got.length >= 2) {
+        var vals = got.map(function (r) { return r.value; });
+        var spread = Math.max.apply(null, vals) - Math.min.apply(null, vals);
+        ctx.spread = spread;
+        html += '<div class="spread"><span class="big">' + spread.toFixed(1) + ' m</span>' +
+                '<span class="cap">of disagreement between ' + got.length +
+                ' independent public datasets, at this one point.</span></div>';
+      }
+    }
+    html += '</div>';
+
+    // ---- ENTRY 03 — THE VERDICT ------------------------------------------
+    if (got.length >= 2) {
+      var spread2 = ctx.spread;
+      var ratio = spread2 / SLR_2050_M;
+      var cls, head, body;
+
+      if (spread2 > SLR_2050_M * 2) {
+        cls = 'cannot'; head = 'This tool cannot answer the question here';
+        body = 'The datasets disagree by <em>' + spread2.toFixed(1) + ' m</em>. ' +
+               'The mean sea-level rise expected by 2050 is about <em>' + SLR_2050_M.toFixed(2) + ' m</em> (' +
+               SLR_2050_RANGE + ' depending on scenario). ' +
+               'The disagreement between our instruments is roughly <strong>' + Math.round(ratio) +
+               ' times larger</strong> than the change being asked about. ' +
+               'Any line this tool drew on the map at that scale would be drawing its own error.';
+      } else if (spread2 > SLR_2050_M) {
+        cls = 'marginal'; head = 'Marginal &mdash; treat as indicative only';
+        body = 'The datasets disagree by <em>' + spread2.toFixed(1) + ' m</em>, which is still larger than the ' +
+               '~' + SLR_2050_M.toFixed(2) + ' m of mean rise expected by 2050. The instruments cannot ' +
+               'cleanly resolve the signal, though they are closer here than in most places.';
+      } else {
+        cls = 'can'; head = 'The readings agree unusually closely here';
+        body = 'The datasets differ by only <em>' + spread2.toFixed(1) + ' m</em>. That is agreement, not accuracy: ' +
+               'they share source data and error modes, so agreeing is not the same as being right. ' +
+               'Copernicus states an absolute vertical accuracy of <em>under 4 m at 90% confidence</em> regardless.';
+      }
+      html += '<div class="entry"><span class="label">Entry 03 &mdash; Verdict</span>' +
+              '<div class="verdict ' + cls + '"><span class="head">' + head + '</span><p>' + body + '</p></div></div>';
+    }
+
+    // ---- ENTRY 04 — THE AUTHORITATIVE ANSWER ------------------------------
+    html += '<div class="entry"><span class="label">Entry 04 &mdash; The official map</span>';
+    if (ctx.fema && ctx.fema.failed) {
+      html += '<p>The FEMA flood-map service did not answer. That is a failure to ask, not an all-clear. ' +
+              'Check it yourself at the <a href="https://msc.fema.gov/portal/search" target="_blank" rel="noopener">FEMA Map Service Center</a>.</p>';
+    } else if (ctx.fema && ctx.fema.attrs) {
+      var a = ctx.fema.attrs;
+      var hazard = a.SFHA_TF === 'T';
+      // A zone can read "outside the hazard area" ONLY because a levee is standing
+      // between it and the water. FEMA says so in ZONE_SUBTY, and most tools drop
+      // that field. Mid-City New Orleans is zone X on this basis. Rendering that as
+      // a reassuring green would be the single most dangerous thing this page could do.
+      var leveed = /LEVEE|LEVE|DAM/i.test(a.ZONE_SUBTY || '');
+      var zclass = hazard ? 'hazard' : (leveed ? 'leveed' : 'safe');
+      html += '<h2>This point is mapped by FEMA.</h2>';
+      html += '<div class="fema-zone"><span class="z ' + zclass + '">' +
+              esc(a.FLD_ZONE || '—') + '</span>' +
+              '<span class="muted" style="font-size:13.5px">' +
+              (hazard ? 'Inside a Special Flood Hazard Area'
+                      : (leveed ? 'Outside the hazard area <em>because a levee is there</em>'
+                                : 'Outside the Special Flood Hazard Area')) +
+              '</span></div>';
+      html += '<dl class="kv">';
+      html += '<div><dt>Zone</dt><dd>' + esc(a.FLD_ZONE || 'not stated') +
+              (a.ZONE_SUBTY ? ' &middot; ' + esc(a.ZONE_SUBTY) : '') + '</dd></div>';
+      if (typeof a.STATIC_BFE === 'number' && a.STATIC_BFE > -9999) {
+        html += '<div><dt>Base flood elev.</dt><dd>' + a.STATIC_BFE + ' ft</dd></div>';
+      }
+      if (a.DFIRM_ID) html += '<div><dt>FIRM panel id</dt><dd>' + esc(a.DFIRM_ID) + '</dd></div>';
+      html += '</dl>';
+      if (leveed) {
+        html += '<div class="verdict marginal" style="margin:14px 0 4px"><span class="head">Read this zone carefully</span>' +
+                '<p>FEMA has classified this point as lower risk <strong>because a levee, dam or floodwall ' +
+                'is standing between it and the water</strong> &mdash; that is what the subtype above means. ' +
+                'The land itself may be low, or below sea level. The protection is a structure, it has a ' +
+                'design limit, and it can be overtopped or fail. Much of New Orleans carries this exact ' +
+                'classification. Treat it as <em>defended</em>, not as <em>high</em>.</p></div>';
+      }
+      html += '<p style="margin-top:12px">This is the <em>regulatory</em> flood map &mdash; the one insurers and ' +
+              'lenders actually use. It is a real, surveyed, engineered product and it outranks every ' +
+              'elevation number above it on this page. It is also not a forecast: FEMA maps present-day ' +
+              'flood hazard, and panels vary in age by decades.</p>';
+      html += '<p class="src-line">Source: FEMA National Flood Hazard Layer, queried live. ' +
+              '<a href="https://msc.fema.gov/portal/search" target="_blank" rel="noopener">Look up the official panel</a></p>';
+    } else if (ctx.fema && ctx.fema.attrs === null) {
+      html += '<p class="lead">FEMA has no mapped flood zone at this exact point.</p>' +
+              '<p>That means one of three different things, and this tool cannot tell you which: the area is ' +
+              'genuinely outside the mapped floodplain, the community has never been mapped, or the panel ' +
+              'is too old to include it. <strong>Unmapped is not the same as safe.</strong> ' +
+              '<a href="https://msc.fema.gov/portal/search" target="_blank" rel="noopener">Check the FEMA Map Service Center.</a></p>';
+    } else {
+      html += '<p class="lead">This point is outside the United States, and there is no global equivalent of FEMA.</p>' +
+              '<p>Flood hazard mapping outside the US is done nation by nation, at wildly varying quality, and ' +
+              'no free global service publishes it. <strong>Your national or regional flood authority is the ' +
+              'only real answer here</strong> &mdash; the Environment Agency in England, the SFINCS/LIWO viewers in ' +
+              'the Netherlands, your state or prefectural hazard map elsewhere. This tool is not a substitute ' +
+              'for any of them.</p>';
+    }
+    html += '</div>';
+
+    // ---- ENTRY 05 — WHAT ACTUALLY CHANGES --------------------------------
+    html += '<div class="entry"><span class="label">Entry 05 &mdash; What actually changes in twenty years</span>';
+    html += '<p class="lead">Twenty years is a short horizon for sea level, and that is the most useful thing ' +
+            'on this page.</p>';
+    html += '<p>Mean sea level moves roughly <em>' + SLR_2050_RANGE + '</em> by 2050 &mdash; and the gap between the ' +
+            'best and worst emissions scenarios at 2050 is only about six centimetres. Over this horizon the ' +
+            'scenario barely matters. The waterline is not where the risk lives.</p>';
+    html += '<p>What changes sharply is <em>how often</em> water arrives. NOAA projects that by 2050 moderate ' +
+            'coastal flooding in the US will occur <strong>more than ten times as often as today</strong> &mdash; ' +
+            'shifting in some places from one event every two to five years to several events every year. ' +
+            'A small rise in the baseline moves a large number of ordinary high tides and storm surges over ' +
+            'the threshold that floods a street.</p>';
+    html += '<p>So the honest twenty-year question is not &ldquo;will the sea reach my house&rdquo; but ' +
+            '&ldquo;how much more often will the water that already reaches my street arrive.&rdquo; ' +
+            'Storm surge, king tides, land subsidence and local drainage dominate that answer, and none of ' +
+            'them are visible in a global elevation grid.</p>';
+    html += '<p class="src-line">Sources: IPCC AR6 WG1 Ch.9 (2021) &middot; ' +
+            '<a href="https://www.noaa.gov/news-release/us-coastline-to-see-up-to-foot-of-sea-level-rise-by-2050" target="_blank" rel="noopener">NOAA 2022 Interagency Sea Level Rise Technical Report</a></p>';
+    html += '</div>';
+
+    // ---- SOURCES ---------------------------------------------------------
+    html += '<div class="entry"><span class="label">Sources for this reading</span><p class="src-line">';
+    readings.forEach(function (r) {
+      html += '<a href="' + r.src.href + '" target="_blank" rel="noopener">' + esc(r.src.name) + '</a> &middot; ' +
+              esc(r.src.res) + ' &middot; ' + esc(r.src.vintage) + '<br />';
+    });
+    html += 'Copernicus DEM: &copy; DLR e.V. 2010-2014 and &copy; Airbus Defence and Space GmbH 2014-2018 ' +
+            'provided under COPERNICUS by the European Union and ESA; all rights reserved. ' +
+            'Elevation served via <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> (CC-BY 4.0) ' +
+            'and <a href="https://www.opentopodata.org" target="_blank" rel="noopener">Open Topo Data</a>; ' +
+            'Terrarium tiles from <a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">Terrain Tiles on AWS</a> ' +
+            '(Mapzen/Tilezen; sources include SRTM, GMTED2010, ETOPO1 and USGS NED); ' +
+            '3DEP via the <a href="https://apps.nationalmap.gov/epqs/" target="_blank" rel="noopener">USGS Elevation Point Query Service</a> (public domain).<br />' +
+            'Geocoding &copy; OpenStreetMap contributors, ODbL.' +
+            '</p></div>';
+
+    panel.innerHTML = html;
+    panel.scrollTop = 0;
+  }
+
+  // ==========================================================================
+  // THE READOUT — four indicators, each a big number out of its real range,
+  // each with a meter and a confidence state.
+  //
+  // The rule this whole section obeys: a number is only shown as precise when
+  // an instrument can actually see it. Otherwise the card says so — a range
+  // instead of a point, "at least" instead of "is", or a hatched empty meter
+  // that reads "the instruments can't see this here". Surge's identity is
+  // saying clearly when the data cannot answer, and a big confident number is
+  // the easiest place to lose that.
+  // ==========================================================================
+
+  // FEMA defines its zones by ANNUAL chance. Over n years that compounds:
+  //   P(at least one) = 1 - (1 - p)^n.
+  // 1%/yr over 20 yr = 18.2%;  0.2%/yr over 20 yr = 3.9%.  (FEMA's own "26% over
+  // a 30-year mortgage" is the same arithmetic.) These are the chances that the
+  // flood the zone is DEFINED by happens, not a model of this particular house.
+  var YEARS = 20;
+  function over(p) { return 100 * (1 - Math.pow(1 - p, YEARS)); }
+  var P1 = over(0.01), P02 = over(0.002);
+
+  function classifyFema(a) {
+    var zone = String(a.FLD_ZONE || '').toUpperCase();
+    var sub = String(a.ZONE_SUBTY || '').toUpperCase();
+    if (/LEVEE|LEVE|DAM/.test(sub) && a.SFHA_TF !== 'T') return 'leveed';
+    if (a.SFHA_TF === 'T' || /^(A|V)/.test(zone)) return /^V/.test(zone) ? 'coastal' : 'sfha';
+    if (zone === 'D') return 'undetermined';
+    if (/OPEN WATER/.test(zone) || /OPEN WATER/.test(sub)) return 'water';
+    if (/0\.2 PCT/.test(sub)) return 'shaded';
+    if (zone === 'X' || /MINIMAL/.test(sub)) return 'minimal';
+    return 'other';
+  }
+
+  function pct(v, lo, hi) { return Math.max(0, Math.min(100, (v - lo) / (hi - lo) * 100)); }
+  function fmt1(n) { var s = n.toFixed(1); return s === '-0.0' ? '0.0' : s; }
+
+  // Colour tracks. Stops are placed at the point on each scale where the
+  // meaning changes, so the colour is a statement, not decoration.
+  //   worse-high: green -> red as the number rises (flood chance, noise, depth)
+  //   better-high: red -> green as the number rises (ground height)
+  var RED = 'oklch(0.62 0.20 25)', AMB = 'oklch(0.76 0.15 70)', GRN = 'oklch(0.72 0.15 150)';
+  function gradWorseHigh(amberAt, redAt) {
+    return 'linear-gradient(90deg,' + GRN + ' 0%,' + AMB + ' ' + amberAt + '%,' + RED + ' ' + redAt + '%,' + RED + ' 100%)';
+  }
+  function gradBetterHigh(amberAt, greenAt) {
+    return 'linear-gradient(90deg,' + RED + ' 0%,' + RED + ' ' + (amberAt * 0.6).toFixed(1) + '%,' + AMB + ' ' + amberAt + '%,' + GRN + ' ' + greenAt + '%,' + GRN + ' 100%)';
+  }
+
+  function indicators(ctx) {
+    var out = [];
+    var got = ctx.readings.filter(function (r) { return r.value !== null; });
+    var vals = got.map(function (r) { return r.value; });
+    var lo = vals.length ? Math.min.apply(null, vals) : null;
+    var hi = vals.length ? Math.max.apply(null, vals) : null;
+    var dtm = ctx.readings.filter(function (r) { return r.src.model === 'DTM' && r.value !== null; })[0] || null;
+
+    // ---- 1. FLOOD CHANCE, NEXT 20 YEARS — FEMA ------------------------------
+    var f = { key: 'fema', label: 'Chance of the mapped flood &middot; next 20 yrs', of: '/ 100',
+              lo: 0, hi: 100, grad: gradWorseHigh(4, 18), ends: ['0%', '100%'] };
+    if (!ctx.fema) {
+      f.unknown = true; f.num = '&mdash;';
+      f.chip = ['none', 'Instruments can’t see this here'];
+      f.cap = 'No free global flood-zone map exists. FEMA covers the United States only.';
+    } else if (ctx.fema.failed) {
+      f.unknown = true; f.num = '?';
+      f.chip = ['bad', 'FEMA did not answer'];
+      f.cap = 'A failure to ask, not an all-clear.';
+    } else if (!ctx.fema.attrs) {
+      f.unknown = true; f.num = '?';
+      f.chip = ['low', 'Unmapped ≠ safe'];
+      f.cap = 'No FEMA zone at this exact point: outside the floodplain, never mapped, or an old panel.';
+    } else {
+      var k = classifyFema(ctx.fema.attrs), zn = esc(ctx.fema.attrs.FLD_ZONE || '');
+      if (k === 'sfha' || k === 'coastal') {
+        f.num = '≥' + Math.round(P1); f.bandLo = P1; f.bandHi = 100; f.openRight = true;
+        f.chip = ['high', 'Regulatory map · zone ' + zn];
+        f.cap = 'Inside the 1%-a-year floodplain' + (k === 'coastal' ? ', with wave action' : '') +
+                '. That compounds to at least ' + Math.round(P1) + '% over 20 years.';
+      } else if (k === 'shaded') {
+        f.num = Math.round(P02) + '–' + Math.round(P1); f.bandLo = P02; f.bandHi = P1;
+        f.chip = ['high', 'Regulatory map · 0.2% zone'];
+        f.cap = 'Between 0.2% and 1% a year: ' + Math.round(P02) + '–' + Math.round(P1) + '% over 20 years.';
+      } else if (k === 'leveed') {
+        f.num = '&lt;' + Math.round(P1); f.bandLo = 0; f.bandHi = P1;
+        f.chip = ['low', 'Only while the levee holds'];
+        f.cap = 'Mapped lower-risk because a levee stands in front of it. The number assumes the structure holds.';
+      } else if (k === 'minimal') {
+        f.num = '&lt;' + Math.round(P02); f.bandLo = 0; f.bandHi = P02;
+        f.chip = ['high', 'Regulatory map · minimal'];
+        f.cap = 'Outside the 0.2%-a-year area. Low mapped chance — not zero, and rain floods are not on this map.';
+      } else if (k === 'undetermined') {
+        f.unknown = true; f.num = '?';
+        f.chip = ['low', 'FEMA: undetermined (D)'];
+        f.cap = 'FEMA has not studied the hazard here. Possible, unassessed.';
+      } else if (k === 'water') {
+        f.num = '100'; f.bandLo = 100; f.bandHi = 100;
+        f.chip = ['high', 'Open water'];
+        f.cap = 'This point is mapped as water.';
+      } else {
+        f.unknown = true; f.num = '?';
+        f.chip = ['low', 'Zone ' + zn + ' · not classified'];
+        f.cap = 'A zone this readout does not know how to turn into a chance. See the panel.';
+      }
+    }
+    out.push(f);
+
+    // ---- 2. GROUND HEIGHT ---------------------------------------------------
+    // Bare earth (3DEP) is the only reading that measures the ground. Without it,
+    // every free global dataset measures rooftops and canopy, so the honest
+    // answer is the RANGE they span, not a point picked from inside it.
+    var g = { key: 'ground', label: 'Ground height above sea level', of: 'm', lo: -5, hi: 25,
+              grad: gradBetterHigh(pct(3, -5, 25), pct(10, -5, 25)), ends: ['−5 m', '25 m'] };
+    if (!vals.length) {
+      g.unknown = true; g.num = '?';
+      g.chip = ['none', 'No reading at all'];
+      g.cap = 'Every elevation source failed or has no coverage here.';
+    } else if (dtm) {
+      g.num = fmt1(dtm.value); g.tick = dtm.value;
+      if (vals.length > 1) { g.bandLo = lo; g.bandHi = hi; }
+      g.chip = ['high', 'Bare earth · 3DEP'];
+      g.cap = 'Measured bare earth. The outline shows the ' + fmt1(lo) + '–' + fmt1(hi) +
+              ' m the rooftop-reading datasets spread across.';
+    } else if (vals.length > 1) {
+      g.num = Math.round(lo) + '–' + Math.round(hi); g.bandLo = lo; g.bandHi = hi;
+      g.chip = ['low', 'Surface models · read high']; g.suspect = true;
+      g.cap = 'No bare-earth data here. These measure roofs and trees, so the true ground is likely at or below the low end.';
+    } else {
+      g.num = fmt1(vals[0]); g.tick = vals[0];
+      g.chip = ['low', 'One source only'];
+      g.cap = 'A single surface-model reading, with nothing to check it against.';
+    }
+    out.push(g);
+
+    // ---- 3. INSTRUMENT NOISE vs THE 2050 SIGNAL ------------------------------
+    var n = { key: 'noise', label: 'Disagreement between datasets', of: '/ 10 m', lo: 0, hi: 10,
+              grad: gradWorseHigh(pct(SLR_2050_M, 0, 10), pct(SLR_2050_M * 2, 0, 10)),
+              ends: ['', '10 m'], marks: [{ at: SLR_2050_M, text: '← 2050 rise' }] };
+    if (vals.length < 2) {
+      n.unknown = true; n.num = '?';
+      n.chip = ['none', 'Needs two readings'];
+      n.cap = 'Fewer than two datasets answered, so there is nothing to compare.';
+    } else {
+      var spread = hi - lo, ratio = spread / SLR_2050_M;
+      n.num = fmt1(spread); n.tick = spread;
+      if (spread > SLR_2050_M * 2) n.chip = ['bad', Math.round(ratio) + '× the signal · can’t see it'];
+      else if (spread > SLR_2050_M) n.chip = ['low', 'Marginal · indicative only'];
+      else n.chip = ['high', 'Agree closely · not proof'];
+      n.cap = got.length + ' public datasets at this one point. The tick marks the ' +
+              (SLR_2050_M * 100).toFixed(0) + ' cm of sea-level rise due by 2050.';
+    }
+    out.push(n);
+
+    // ---- 4. DEPTH OF THE MAPPED FLOOD OVER THE GROUND -----------------------
+    // Only computable where FEMA publishes a static base flood elevation AND a
+    // bare-earth reading exists. Both are NAVD88 on modern US maps; older panels
+    // may use NGVD29 (differs by up to ~1.5 m), which is why this is labelled.
+    var d = { key: 'depth', label: '1% flood depth over the ground', of: '/ 5 m', lo: 0, hi: 5,
+              grad: gradWorseHigh(pct(0.3, 0, 5), pct(1.2, 0, 5)), ends: ['0', '5 m'] };
+    var a = ctx.fema && ctx.fema.attrs;
+    var bfe = a && typeof a.STATIC_BFE === 'number' && a.STATIC_BFE > -9999 ? a.STATIC_BFE * 0.3048 : null;
+    if (bfe !== null && dtm) {
+      var depth = bfe - dtm.value;
+      d.num = depth > 0 ? fmt1(depth) : '0.0'; d.tick = Math.max(0, depth);
+      d.chip = ['low', 'BFE − bare earth · check datum'];
+      d.cap = 'FEMA’s base flood elevation (' + (bfe).toFixed(1) + ' m) minus measured ground.';
+    } else {
+      d.unknown = true; d.num = '&mdash;';
+      d.chip = ['none', 'Instruments can’t see this here'];
+      d.cap = !ctx.fema ? 'Needs FEMA’s base flood elevation, which exists only on US maps.'
+            : !dtm ? 'Needs a bare-earth reading, and none answered here.'
+            : 'FEMA publishes no single base flood elevation for this spot.';
+    }
+    out.push(d);
+    return out;
+  }
+
+  function headline(ctx) {
+    var got = ctx.readings.filter(function (r) { return r.value !== null; });
+    var a = ctx.fema && ctx.fema.attrs;
+    if (a) {
+      var k = classifyFema(a);
+      if (k === 'leveed') return ['marginal', 'FEMA maps this as defended, not high. The elevation data below cannot improve on that.'];
+      return ['authority', 'FEMA’s regulatory map is the answer that counts here. The elevation numbers are context, not a second opinion.'];
+    }
+    if (got.length >= 2) {
+      var s = Math.max.apply(null, got.map(function (r) { return r.value; })) - Math.min.apply(null, got.map(function (r) { return r.value; }));
+      if (s > SLR_2050_M * 2) return ['cannot', 'The free elevation data cannot see a 25 cm rise here. Ask your national flood authority.'];
+      if (s > SLR_2050_M) return ['marginal', 'The datasets are close, but not close enough to resolve 2050. Treat everything as indicative.'];
+      return ['can', 'The datasets agree unusually closely here — which is agreement, not accuracy.'];
+    }
+    return ['cannot', 'Not enough readings to say anything. That is no answer, not a safe one.'];
+  }
+
+  function indicatorHtml(c) {
+    var h = '<div class="ind' + (c.unknown ? ' unknown' : '') + (c.marks && !c.unknown ? ' has-marks' : '') +
+            '" data-ind="' + c.key + '" role="button" tabindex="0" aria-controls="detail" aria-expanded="false">';
+    h += '<div class="i-lab">' + c.label + '</div>';
+    h += '<div class="i-num"><b>' + c.num + '</b><span class="of">' + c.of + '</span></div>';
+    h += '<div class="meter' + (c.suspect ? ' suspect' : '') + '" style="--grad:' + c.grad + '"><div class="track"></div>';
+    if (!c.unknown) {
+      if (typeof c.bandLo === 'number') {
+        var l = pct(c.bandLo, c.lo, c.hi), r = pct(c.bandHi, c.lo, c.hi);
+        if (r - l < 2) { l = Math.max(0, l - 1); r = Math.min(100, r + 1); }
+        h += '<div class="band' + (c.openRight ? ' open-right' : '') + '" style="left:' + l.toFixed(1) +
+             '%;width:' + (r - l).toFixed(1) + '%"></div>';
+      }
+      if (typeof c.tick === 'number') h += '<div class="tick" style="left:' + pct(c.tick, c.lo, c.hi).toFixed(1) + '%"></div>';
+    }
+    (c.unknown ? [] : (c.marks || [])).forEach(function (mk) {
+      h += '<div class="mark" style="left:' + pct(mk.at, c.lo, c.hi).toFixed(1) + '%"><span>' + mk.text + '</span></div>';
+    });
+    h += '</div><div class="ends"><span>' + c.ends[0] + '</span><span>' + c.ends[1] + '</span></div>';
+    h += '<span class="chip ' + c.chip[0] + '">' + c.chip[1] + '</span>';
+    h += '<div class="i-cap">' + c.cap + '</div>';
+    h += '<span class="i-more" aria-hidden="true">Where this comes from &rarr;</span></div>';
+    return h;
+  }
+
+  var popup = new maplibregl.Popup({
+    className: 'glass-pop', anchor: 'top', offset: 16,
+    closeButton: false, closeOnClick: false, maxWidth: 'none', focusAfterOpen: false
+  });
+  var lastCtx = null;
+
+  function glassShell(inner) {
+    var el = document.createElement('div');
+    el.className = 'glass';
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-label', 'Surge reading for this point');
+    el.innerHTML = '<span class="stem" aria-hidden="true"></span>' + inner;
+    el.addEventListener('pointermove', function (e) {
+      var r = el.getBoundingClientRect();
+      el.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100).toFixed(1) + '%');
+      el.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100).toFixed(1) + '%');
+    });
+    // a click inside the glass must never fall through and move the pin
+    el.addEventListener('click', function (e) { e.stopPropagation(); });
+    var x = el.querySelector('.g-x');
+    if (x) x.addEventListener('click', closeReadout);
+    var full = el.querySelector('[data-full]');
+    if (full) full.addEventListener('click', function () {
+      var p = document.querySelector('aside');
+      if (window.matchMedia('(max-width: 900px)').matches) p.scrollIntoView({ behavior: 'smooth' });
+      else setLog(true);
+    });
+    Array.prototype.forEach.call(el.querySelectorAll('.ind'), function (ind) {
+      function go() {
+        var k = ind.dataset.ind;
+        if (detailKey === k && document.getElementById('detail').classList.contains('open')) closeDetail();
+        else openDetail(k);
+      }
+      ind.addEventListener('click', go);
+      ind.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); }
+      });
+    });
+    return el;
+  }
+
+  function titleBlock(lat, lon, name) {
+    return '<div class="g-head"><div class="g-title"><span class="label">Surge reading</span>' +
+           '<h3 title="' + esc(name || '') + '">' + esc(name || 'Pinned point') + '</h3>' +
+           '<span class="coords">' + lat.toFixed(4) + ', ' + lon.toFixed(4) + '</span></div>' +
+           '<button class="g-x" type="button" aria-label="Close reading">×</button></div>';
+  }
+
+  function openLoading(lat, lon, name) {
+    closeDetail(true);
+    var fs = document.getElementById('fbStatus'); if (fs) fs.hidden = true;
+    var inner = titleBlock(lat, lon, name) +
+      '<p class="g-say">Reading the datasets one at a time, inside their rate limits&hellip;</p>' +
+      '<div class="g-grid"><div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>';
+    popup.setLngLat([lon, lat]).setDOMContent(glassShell(inner));
+    if (!popup.isOpen()) popup.addTo(map);
+    setReading(true);
+  }
+
+  function openReadout(ctx) {
+    lastCtx = ctx;
+    var hl = headline(ctx);
+    var inner = titleBlock(ctx.lat, ctx.lon, ctx.name) +
+      '<p class="g-say ' + hl[0] + '">' + hl[1] + '</p>' +
+      '<div class="g-grid">' + indicators(ctx).map(indicatorHtml).join('') + '</div>' +
+      '<div class="g-foot"><span>Every number carries its range. <a href="how-it-works.html#readout">How to read these</a></span>' +
+      '<button type="button" data-full>Full log</button></div>';
+    var el = glassShell(inner);
+    lastInds = indicators(ctx);
+    popup.setLngLat([ctx.lon, ctx.lat]).setDOMContent(el);
+    if (!popup.isOpen()) popup.addTo(map);
+    var fs = document.getElementById('fbStatus'); if (fs) fs.hidden = true;
+    setReading(true);
+    frameReadout(ctx, el);
+  }
+
+  var NARROW = window.matchMedia ? window.matchMedia('(max-width: 900px)') : { matches: false };
+  function setReading(on) {
+    var shell = document.querySelector('.shell');
+    var was = shell.classList.contains('reading');
+    shell.classList.toggle('reading', on);
+    if (NARROW.matches && was !== on) {
+      map.resize();
+      if (on) document.querySelector('main').scrollIntoView({ block: 'start' });
+    }
+  }
+
+  // Once the real window exists, measure it and move the map so the pin sits
+  // just high enough for the whole window to fit beneath it.
+  // Where the pin goes: TOP-MIDDLE (her ask), with the window directly beneath it. "Top"
+  // means just below anything that floats over the middle of the map (on a phone the
+  // search bar spans the width; on a desktop it sits at the left, clear of the middle).
+  function pinTop(half) {
+    half = half || 210;                                  // half the window's width, plus a margin
+    var mc = map.getContainer(), mr = mc.getBoundingClientRect(), cx = mr.left + mr.width / 2;
+    var top = 56;                                        // the pin is 34 px tall above its tip
+    var fb = document.getElementById('floatbar');
+    if (fb && fb.offsetParent) {
+      var r = fb.getBoundingClientRect();
+      if (r.right > cx - half && r.left < cx + half) top = Math.max(top, r.bottom - mr.top + 46);
+    }
+    return top;
+  }
+  function frameReadout(ctx, el) {
+    requestAnimationFrame(function () {
+      var mh = map.getContainer().clientHeight;
+      var room = detailOpen() ? mh - document.getElementById('detail').offsetHeight : mh;
+      // a short screen cannot hold the full window under a top-middle pin: drop the
+      // one-line captions (every one of them is in the detail panel, one click away)
+      var half = el.offsetWidth / 2 + 12;
+      el.classList.remove('tight');
+      el.classList.toggle('tight', !detailOpen() && el.offsetHeight + pinTop(half) + 28 > mh);
+      var need = el.offsetHeight + 16 + 12;               // window + offset + margin
+      var pinY = Math.min(pinTop(half), Math.max(40, room - need));
+      map.easeTo({ center: [ctx.lon, ctx.lat], zoom: wantZoom,
+                   offset: [0, Math.round(pinY - mh / 2)], duration: 450 });
+    });
+  }
+
+  function closeReadout() { closeDetail(true); if (popup.isOpen()) popup.remove(); setReading(false); }
+
+  // ==========================================================================
+  // THE DETAIL PANEL — one statistic in full: what it is, who measures it, what it
+  // means, how sure that measurement alone can make you, and exactly what came back
+  // at this point. Every sentence here is about the source, not a sales pitch for it.
+  // ==========================================================================
+  var lastInds = [], detailKey = null;
+  var ORDER = ['fema', 'ground', 'noise', 'depth'];
+  function detailOpen() { return document.getElementById('detail').classList.contains('open'); }
+
+  function rowsHtml(rows) {
+    return '<dl>' + rows.map(function (r) { return '<dt>' + r[0] + '</dt><dd>' + r[1] + '</dd>'; }).join('') + '</dl>';
+  }
+  function readingRows(ctx) {
+    return ctx.readings.map(function (r) {
+      return [esc(r.src.name), r.value !== null ? fmt1(r.value) + ' m &middot; ' + r.src.model + ' &middot; ' + (typeof r.res === 'number' ? r.res + ' m' : (r.res || r.src.res))
+                                              : (r.failed ? 'could not ask' : 'no coverage here')];
+    });
+  }
+
+  function detailFor(key, ctx, c) {
+    var a = ctx.fema && ctx.fema.attrs;
+    var got = ctx.readings.filter(function (r) { return r.value !== null; });
+    var dtm = ctx.readings.filter(function (r) { return r.src.model === 'DTM' && r.value !== null; })[0] || null;
+    var d = { what: '', who: '', means: '', sure: '', here: [] };
+    if (key === 'fema') {
+      d.title = 'Chance of the mapped flood, next 20 years';
+      d.unit = 'percent, over 20 years';
+      d.what = '<p>The flood zone FEMA has drawn at this exact point, turned into a chance over 20 years. ' +
+        'FEMA maps the <b>1%-a-year</b> flood (the &ldquo;base flood&rdquo;) and the <b>0.2%-a-year</b> flood. ' +
+        'Over 20 years those compound to <b>' + Math.round(P1) + '%</b> and <b>' + Math.round(P02) + '%</b>: ' +
+        'one minus the chance of 20 dry years in a row.</p>';
+      d.who = '<p>The <b>Federal Emergency Management Agency</b>, through the <b>National Flood Hazard Layer</b>: the ' +
+        'digital version of the effective Flood Insurance Rate Maps, drawn from engineering studies of rivers and coasts ' +
+        'and adopted by each community. Surge asks FEMA&rsquo;s own server live, for this point, every time.</p>';
+      d.means = '<p>Inside the 1% zone (the Special Flood Hazard Area, zones A and V) flood insurance is required for a ' +
+        'federally backed mortgage. It is the <b>regulatory</b> answer, which is why it outranks every elevation number ' +
+        'here. It says how likely the <em>mapped</em> flood is, not how deep, and not what happens to a building.</p>';
+      d.sure = '<p><b>Authoritative, and not complete.</b> It is the official map, so for insurance and permits it is ' +
+        'the answer. But each panel is only as current as its study, which can be decades old, and this readout does not ' +
+        'show the panel&rsquo;s date. The maps do not include future sea-level rise, and they mostly miss flooding from ' +
+        'heavy rain away from mapped streams. FEMA itself notes that a substantial share of flood-insurance claims come ' +
+        'from outside the high-risk zones. &ldquo;Unmapped&rdquo; never means safe.</p>' +
+        (a && classifyFema(a) === 'leveed' ? '<p><b>Here the lower number exists because a levee stands in front of it.</b> ' +
+        'FEMA credits the levee; the risk behind a levee is lowered, not removed, and it returns in full if the levee is ' +
+        'overtopped or fails.</p>' : '');
+      if (!ctx.fema) d.here = [['FEMA', 'not asked: outside the United States']];
+      else if (ctx.fema.failed) d.here = [['FEMA', 'did not answer (a failure to ask, not an all-clear)']];
+      else if (!a) d.here = [['FEMA', 'answered: no mapped zone at this exact point']];
+      else d.here = [['Zone', esc(a.FLD_ZONE || '&mdash;')], ['Subtype', esc(a.ZONE_SUBTY || 'none')],
+        ['In the 1% area (SFHA)', a.SFHA_TF === 'T' ? 'yes' : 'no'],
+        ['Base flood elevation', typeof a.STATIC_BFE === 'number' && a.STATIC_BFE > -9999 ? a.STATIC_BFE + ' ft' : 'not published here'],
+        ['Map panel set', esc(a.DFIRM_ID || '&mdash;')]];
+      d.here.push(['Source', '<a href="https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer" target="_blank" rel="noopener">FEMA NFHL MapServer, layer 28</a>']);
+    } else if (key === 'ground') {
+      d.title = 'Ground height above sea level';
+      d.unit = 'metres';
+      d.what = '<p>How high the ground at this point sits above mean sea level. The catch is in the word ' +
+        '<b>ground</b>: most free elevation data measures the <b>top of whatever is there</b>, roofs and tree canopy ' +
+        'included (a surface model, DSM). Only a bare-earth model (DTM) measures the soil under them.</p>';
+      d.who = '<p><b>USGS 3D Elevation Program (3DEP)</b>, asked through the Elevation Point Query Service: bare earth, ' +
+        'often from lidar, United States only. Worldwide: <b>Copernicus DEM GLO-90</b> (ESA and Airbus, from the TanDEM-X ' +
+        'radar mission, via Open-Meteo), <b>SRTM</b> (NASA&rsquo;s Shuttle Radar Topography Mission, flown in February 2000), ' +
+        'and <b>Mapzen / Terrarium</b> (a blend of national and global sources, read from AWS Open Data tiles).</p>';
+      d.means = '<p>The number that decides whether water reaches the ground. If a bare-earth reading exists, Surge ' +
+        'shows it as the point and outlines the range the surface models spread across. With only surface models, it ' +
+        'shows the range, because the true ground is likely at or below the low end of it.</p>';
+      d.sure = '<p><b>Bare earth: good. Surface models: not good enough for sea-level questions.</b> USGS&rsquo;s standard ' +
+        'lidar specification (Quality Level 2) asks for about 10 cm vertical accuracy in open ground. Copernicus states its ' +
+        'absolute vertical accuracy as under 4 m at 90% confidence; SRTM&rsquo;s mission specification was 16 m. In towns ' +
+        'and forests the surface models read systematically high, by metres. The datasets also use different definitions of ' +
+        '&ldquo;sea level&rdquo; (NAVD88 for 3DEP, global geoid models for the rest), which alone can move a number by tens ' +
+        'of centimetres.</p>';
+      d.here = readingRows(ctx);
+      d.here.push(['Shown', dtm ? 'the bare-earth reading, with the surface-model range outlined' : got.length > 1 ? 'the range of the surface models' : got.length ? 'a single reading' : 'nothing answered']);
+    } else if (key === 'noise') {
+      d.title = 'Disagreement between datasets';
+      d.unit = 'metres, highest minus lowest';
+      d.what = '<p>The highest elevation reading here minus the lowest. Several independent instruments looked at the ' +
+        'same point; this is how far apart their answers landed.</p>';
+      d.who = '<p>Nobody tracks this as an official figure; <b>Surge computes it</b> from the readings on this page. ' +
+        'The yardstick it is compared against is the sea-level rise expected by 2050: about <b>' + (SLR_2050_M * 100).toFixed(0) +
+        ' cm</b> (' + SLR_2050_RANGE + '), from the <b>IPCC</b> Sixth Assessment Report and <b>NOAA</b>&rsquo;s 2022 ' +
+        'interagency sea-level-rise report.</p>';
+      d.means = '<p>If the instruments disagree with each other by more than the change you are asking about, they cannot ' +
+        'see that change. When the spread is several times the 2050 rise, no elevation-based answer about 2050 at this ' +
+        'point is worth trusting, whichever dataset it comes from.</p>';
+      d.sure = '<p><b>Disagreement is proof of doubt; agreement is not proof of truth.</b> A large spread reliably means ' +
+        'the data cannot resolve the question. A small spread only means the instruments agree: at Schiphol all three ' +
+        'global datasets agree within a metre, and all three are about ten metres too high. That is why this number can ' +
+        'turn red, but never truly green.</p>';
+      d.here = readingRows(ctx);
+      if (got.length >= 2) {
+        var vs = got.map(function (r) { return r.value; });
+        var sp = Math.max.apply(null, vs) - Math.min.apply(null, vs);
+        d.here.push(['Spread', fmt1(sp) + ' m, ' + (sp / SLR_2050_M).toFixed(1) + '&times; the 2050 rise']);
+      }
+    } else {
+      d.title = '1% flood depth over the ground';
+      d.unit = 'metres of water';
+      d.what = '<p>How deep the 1%-a-year flood would stand over the ground here: FEMA&rsquo;s <b>base flood elevation</b> ' +
+        '(the height the mapped flood&rsquo;s water surface reaches) minus the <b>bare-earth</b> ground height.</p>';
+      d.who = '<p>Two agencies, subtracted. The water height comes from <b>FEMA</b>&rsquo;s flood study (published in feet ' +
+        'on the rate map, converted here); the ground comes from <b>USGS 3DEP</b>. It exists only where FEMA publishes a ' +
+        'single base flood elevation for the spot and a bare-earth reading answers.</p>';
+      d.means = '<p>Depth is what turns a flood zone into damage: a few centimetres wets a floor, a metre ruins a house. ' +
+        'Where this cannot be computed Surge says so rather than guess, which is most places.</p>';
+      d.sure = '<p><b>Indicative, never exact.</b> The base flood elevation is a modelled water surface, usually rounded to ' +
+        'the foot, and older maps state it against an older datum (NGVD29) that can differ from today&rsquo;s (NAVD88) by ' +
+        'more than a metre in places; this readout does not convert between them. The ground is one point, not a building&rsquo;s ' +
+        'floor. Treat it as &ldquo;roughly how much water the map expects&rdquo;, not a measurement.</p>';
+      var bf = a && typeof a.STATIC_BFE === 'number' && a.STATIC_BFE > -9999 ? a.STATIC_BFE : null;
+      d.here = [['Base flood elevation', bf !== null ? bf + ' ft (' + (bf * 0.3048).toFixed(2) + ' m)' : 'not published for this spot'],
+                ['Bare-earth ground', dtm ? fmt1(dtm.value) + ' m (3DEP)' : 'no bare-earth reading']];
+      if (bf !== null && dtm) d.here.push(['Difference', fmt1(bf * 0.3048 - dtm.value) + ' m']);
+    }
+    return d;
+  }
+
+  function openDetail(key) {
+    if (!lastCtx) return;
+    var i = ORDER.indexOf(key); if (i < 0) return;
+    var c = lastInds.filter(function (x) { return x.key === key; })[0] || {};
+    var d = detailFor(key, lastCtx, c);
+    detailKey = key;
+    var el = document.getElementById('detail');
+    var prev = ORDER[(i + 3) % 4], next = ORDER[(i + 1) % 4];
+    el.innerHTML =
+      '<div class="sw-grid">' +
+        '<div class="sw-top"><span class="sw-idx">0' + (i + 1) + ' / 04</span><h2 id="dTitle">' + d.title + '</h2>' +
+        '<div class="sw-nav"><button type="button" data-go="' + prev + '">&larr; Prev</button>' +
+        '<button type="button" data-go="' + next + '">Next &rarr;</button>' +
+        '<button type="button" data-close>Close</button></div></div>' +
+        '<div class="sw-fig"><div class="sw-num">' + (c.num || '&mdash;') + '</div>' +
+          '<div class="sw-unit">' + d.unit + '</div>' +
+          '<span class="sw-state">' + (c.chip ? c.chip[1] : '') + '</span></div>' +
+        '<div class="sw-body">' +
+          '<div class="sw-block"><h3>What this measures</h3>' + d.what + '</div>' +
+          '<div class="sw-block"><h3>Who measures it</h3>' + d.who + '</div>' +
+          '<div class="sw-block"><h3>What it means</h3>' + d.means + '</div>' +
+          '<div class="sw-block"><h3>How sure, from this alone</h3>' + d.sure + '</div>' +
+          '<div class="sw-here"><h3 style="margin:0 0 8px;font:400 10px/1.3 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-s3)">At this point</h3>' +
+            rowsHtml(d.here) + '</div>' +
+        '</div>' +
+      '</div>';
+    el.querySelectorAll('[data-go]').forEach(function (b) { b.addEventListener('click', function () { openDetail(b.dataset.go); }); });
+    el.querySelector('[data-close]').addEventListener('click', function () { closeDetail(); });
+    var was = el.classList.contains('open');
+    el.classList.add('open'); el.setAttribute('aria-hidden', 'false'); el.scrollTop = 0;
+    document.querySelector('.shell').classList.add('detail-open');
+    var g = popup.isOpen() ? popup.getElement().querySelector('.glass') : null;
+    if (g) {
+      g.classList.add('compact');
+      Array.prototype.forEach.call(g.querySelectorAll('.ind'), function (n) {
+        var on = n.dataset.ind === key;
+        n.classList.toggle('active', on); n.setAttribute('aria-expanded', on ? 'true' : 'false');
+      });
+      if (!was) frameReadout(lastCtx, g);
+    }
+    if (!was) setTimeout(function () { el.focus({ preventScroll: true }); }, 60);
+  }
+
+  function closeDetail(quiet) {
+    var el = document.getElementById('detail');
+    if (!el.classList.contains('open')) return;
+    el.classList.remove('open'); el.setAttribute('aria-hidden', 'true');
+    document.querySelector('.shell').classList.remove('detail-open');
+    var g = popup.isOpen() ? popup.getElement().querySelector('.glass') : null;
+    if (g) {
+      g.classList.remove('compact');
+      Array.prototype.forEach.call(g.querySelectorAll('.ind'), function (n) {
+        n.classList.remove('active'); n.setAttribute('aria-expanded', 'false');
+      });
+      if (!quiet && lastCtx) frameReadout(lastCtx, g);
+    }
+    detailKey = null;
+  }
+
+  // ==========================================================================
+  // ORCHESTRATION
+  // ==========================================================================
+  var readSeq = 0, wantZoom = 12;
+  function read(lat, lon, name) {
+    if (!isFinite(lat) || !isFinite(lon)) return;
+
+    marker.setLngLat([lon, lat]);
+    if (!markerPlaced) { marker.addTo(map); markerPlaced = true; }
+    // Put the pin in the upper part of the map so the window beneath it has room.
+    var mh = map.getContainer().clientHeight;
+    wantZoom = Math.max(map.getZoom(), 12);
+    map.easeTo({ center: [lon, lat], zoom: wantZoom,
+                 offset: [0, Math.round(pinTop() - mh / 2)], duration: 700 });
+
+    var key = cacheKey(lat, lon);
+    if (cache[key]) { readSeq++; render(cache[key]); openReadout(cache[key]); return; }
+
+    openLoading(lat, lon, name);
+    setStatus('Reading ' + (name ? name : lat.toFixed(4) + ', ' + lon.toFixed(4)) +
+              ' — querying elevation datasets one at a time to stay inside their rate limits…');
+
+    var wantNed = inUS(lat, lon);
+    var jobs = [
+      readCopernicus(lat, lon).then(function (r) { return { src: ELEV_SOURCES[0], value: r.value, failed: r.failed }; }),
+      // Open Topo Data is still asked for SRTM: it is the one dataset here with no
+      // browser-readable mirror. If their API keeps refusing browsers, this row
+      // honestly reads "could not ask" rather than disappearing.
+      readOtd('srtm30m', lat, lon).then(function (r) { return { src: ELEV_SOURCES[1], value: r.value, failed: r.failed }; }),
+      readTerrarium(lat, lon).then(function (r) { return { src: ELEV_SOURCES[2], value: r.value, failed: r.failed }; })
+    ];
+    if (wantNed) {
+      jobs.push(readEpqs(lat, lon).then(function (r) {
+        return { src: ELEV_SOURCES[3], value: r.value, failed: r.failed, res: r.res };
+      }));
+    }
+
+    var femaJob = wantNed ? readFema(lat, lon) : Promise.resolve(null);
+
+    var mySeq = ++readSeq;
+    Promise.all([Promise.all(jobs), femaJob]).then(function (out) {
+      var ctx = { lat: lat, lon: lon, name: name, readings: out[0], fema: out[1] };
+      cache[key] = ctx;
+      if (mySeq !== readSeq) return;   // the pin moved on while this was in flight
+      render(ctx);
+      openReadout(ctx);
+    }).catch(function () {
+      if (mySeq !== readSeq) return;
+      closeReadout();
+      setStatus('Something failed while reading this point. That is a failure to measure, not a measurement.');
+    });
+  }
+
+  // ---- events --------------------------------------------------------------
+  document.getElementById('searchForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var q = document.getElementById('q').value.trim();
+    if (!q) return;
+    setStatus('Looking up “' + q + '”…');
+    geocode(q).then(function (hit) {
+      if (!hit) { setStatus('No match for that search. Try a more specific place name, or click the map.'); return; }
+      read(hit.lat, hit.lon, hit.name);
+    }).catch(function () {
+      setStatus('The geocoder did not answer. It is a shared free service with a one-request-per-second limit; wait a moment and try again, or click the map instead.');
+    });
+  });
+
+  document.getElementById('useLoc').addEventListener('click', function () {
+    if (!navigator.geolocation) { setStatus('This browser does not offer location access.'); return; }
+    setStatus('Asking your browser for your location. It is used in this page only and is not sent anywhere except the elevation services, as coordinates.');
+    navigator.geolocation.getCurrentPosition(function (p) {
+      read(p.coords.latitude, p.coords.longitude, 'Your current location');
+    }, function () {
+      setStatus('Location was refused or unavailable. Click the map instead.');
+    }, { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 });
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll('.calib button'), function (b) {
+    b.addEventListener('click', function () {
+      read(parseFloat(b.dataset.lat), parseFloat(b.dataset.lon), b.dataset.name);
+    });
+  });
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Iris (demo)</title>
+  <style>
+    :root {
+      /* Wizard Industries warm palette (mirrors android/colors.xml).
+         Rose explicitly likes the yellow/warm theme — do NOT redesign. */
+      --bg:           #0b0b10;
+      --bg-deep:      #1a1422;
+      --fg:           #e8e6f0;
+      --muted:        #8b87a0;
+      --amber:        #d97a35;
+      --sparkle:      #f4a261;
+      --sun:          #e6c46a;
+      --good:         #6cbf73;
+      --bad:          #e0606b;
+      --warn:         #e6c46a;
+      --card:         #211a2b;
+      --tile-border:  rgba(244, 162, 97, 0.18);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      width: 100%; height: 100%;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      overflow: hidden;
+    }
+    #app {
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      height: 100vh;
+    }
+
+    /* ---------- Header / brand row ---------- */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: var(--bg-deep);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 13px;
+    }
+    header .brand { display: flex; align-items: center; gap: 8px; }
+    header .brand img { width: 26px; height: 26px; }
+    header .brand .name {
+      font-weight: 600; letter-spacing: 0.4px; color: var(--sparkle); font-size: 14px;
+    }
+    header .brand .tagline { color: var(--muted); font-size: 11px; letter-spacing: 0.2px; }
+    header .grid-count { margin-left: 14px; color: var(--muted); font-size: 12px; }
+    header .spacer { flex: 1; }
+    header .add-cam {
+      background: rgba(217, 122, 53, 0.16);
+      border: 1px solid rgba(217, 122, 53, 0.42);
+      color: var(--sparkle);
+      font-size: 18px; line-height: 1;
+      width: 30px; height: 30px;
+      border-radius: 8px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    header .add-cam:hover { background: rgba(217, 122, 53, 0.28); }
+
+    /* ---------- IP top bar ---------- */
+    #ip-bar {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+      padding: 7px 14px;
+      background: linear-gradient(90deg, rgba(217,122,53,0.10), rgba(230,196,106,0.05));
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 12px;
+    }
+    #ip-bar .ip-label { color: var(--muted); }
+    #ip-bar .ip-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--card);
+      border: 1px solid var(--tile-border);
+      border-radius: 6px;
+      padding: 3px 8px;
+    }
+    #ip-bar .ip-chip code { color: var(--sun); font-size: 12px; }
+    #ip-bar .ip-chip .copy {
+      cursor: pointer; color: var(--muted); font-size: 11px;
+      border: none; background: transparent; padding: 0 2px;
+    }
+    #ip-bar .ip-chip .copy:hover { color: var(--sparkle); }
+    #ip-bar .ip-chip.cross { border-color: rgba(108, 191, 115, 0.4); }
+    #ip-bar .ip-chip.cross code { color: var(--good); }
+
+    /* ---------- Camera grid ---------- */
+    main { position: relative; background: #000; overflow: hidden; }
+    #grid {
+      display: grid;
+      gap: 4px;
+      width: 100%; height: 100%;
+      padding: 4px;
+      background: var(--bg);
+    }
+    /* Responsive tile counts: 1=full, 2=split, 3-4=quadrants, more=auto-fit. */
+    #grid.n1 { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+    #grid.n2 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; }
+    #grid.n3, #grid.n4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+    #grid.nmany { grid-template-columns: repeat(3, 1fr); grid-auto-rows: 1fr; }
+
+    .tile {
+      position: relative;
+      background: #07070b;
+      border: 1px solid var(--tile-border);
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .tile video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+    .tile .tile-overlay {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center; gap: 6px;
+      color: var(--muted); pointer-events: none; padding: 12px;
+    }
+    .tile .tile-overlay.hidden { display: none; }
+    .tile .tile-overlay h3 { margin: 0; font-size: 13px; color: var(--fg); font-weight: 500; }
+    .tile .tile-overlay p { margin: 0; font-size: 11px; line-height: 1.4; }
+    .tile .tile-overlay code { color: var(--sun); }
+
+    .tile .tile-label {
+      position: absolute; top: 6px; left: 6px;
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(10, 8, 14, 0.7);
+      border: 1px solid var(--tile-border);
+      border-radius: 6px; padding: 2px 8px;
+      font-size: 11px; color: var(--fg);
+      max-width: calc(100% - 12px);
+    }
+    .tile .tile-label .dot {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--muted);
+      transition: background 200ms ease; flex: 0 0 auto;
+    }
+    .tile .tile-label.live .dot { background: var(--good); }
+    .tile .tile-label.connecting .dot { background: var(--warn); }
+    .tile .tile-label.offline .dot { background: var(--bad); }
+    .tile .tile-label .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tile .tile-actions {
+      position: absolute; top: 6px; right: 6px;
+      display: flex; gap: 4px; opacity: 0; transition: opacity 120ms ease;
+    }
+    .tile:hover .tile-actions { opacity: 1; }
+    .tile .tile-actions button {
+      background: rgba(10, 8, 14, 0.7);
+      border: 1px solid var(--tile-border);
+      color: var(--muted);
+      border-radius: 5px; font-size: 11px; padding: 2px 6px; cursor: pointer;
+    }
+    .tile .tile-actions button:hover { color: var(--sparkle); }
+
+    /* ---------- Empty-state gray connection card ---------- */
+    #empty-state {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    #empty-state.hidden { display: none; }
+    #empty-card {
+      background: #2b2b33;                 /* the "gray background" Rose asked for */
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      border-radius: 14px;
+      padding: 24px 28px;
+      max-width: 460px; width: 100%;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+      color: #e8e6f0;
+    }
+    #empty-card .ec-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    #empty-card .ec-head img { width: 34px; height: 34px; }
+    #empty-card .ec-head h2 { margin: 0; font-size: 17px; font-weight: 600; }
+    #empty-card .ec-sub { color: #b8b4c4; font-size: 12px; margin: 0 0 16px 0; line-height: 1.5; }
+    #empty-card .ec-row {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; padding: 8px 0; border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    #empty-card .ec-row .k { color: #b8b4c4; font-size: 12px; }
+    #empty-card .ec-row .v { display: flex; align-items: center; gap: 8px; }
+    #empty-card .ec-row .v code { color: var(--sun); font-size: 13px; }
+    #empty-card .ec-row .v .copy {
+      cursor: pointer; color: #b8b4c4; background: transparent; border: none; font-size: 11px;
+    }
+    #empty-card .ec-row .v .copy:hover { color: var(--sparkle); }
+    #empty-card .ec-slots { margin-top: 12px; }
+    #empty-card .ec-slots .slot-line {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 12px; padding: 4px 0; color: #d6d3e0;
+    }
+    #empty-card .ec-slots .slot-line code { color: var(--sparkle); }
+    #empty-card .ec-how {
+      margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 12px; color: #b8b4c4; line-height: 1.55;
+    }
+    #empty-card .ec-how ol { margin: 8px 0 0 0; padding-left: 18px; }
+    #empty-card .ec-how code { color: var(--sun); }
+    #empty-card .ec-add {
+      margin-top: 16px; width: 100%;
+      background: rgba(217, 122, 53, 0.18);
+      border: 1px solid rgba(217, 122, 53, 0.45);
+      color: var(--sparkle);
+      border-radius: 8px; padding: 8px; font-size: 13px; cursor: pointer;
+    }
+    #empty-card .ec-add:hover { background: rgba(217, 122, 53, 0.28); }
+
+    /* ---------- Splash ---------- */
+    #splash {
+      position: fixed; inset: 0;
+      background: radial-gradient(ellipse at center, var(--bg-deep) 0%, var(--bg) 75%);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 18px; z-index: 1000; transition: opacity 500ms ease;
+    }
+    #splash.hidden { opacity: 0; pointer-events: none; }
+    #splash img { width: 96px; height: 96px; filter: drop-shadow(0 6px 16px rgba(217, 122, 53, 0.35)); }
+    #splash .name { font-size: 28px; letter-spacing: 0.6px; color: var(--sparkle); font-weight: 600; }
+    #splash .tagline { color: var(--muted); font-size: 12px; letter-spacing: 1.2px; text-transform: uppercase; }
+    #splash .loading { color: var(--muted); font-size: 11px; margin-top: 6px; }
+
+    /* ---------- Footer ---------- */
+    footer {
+      padding: 6px 14px; font-size: 11px; color: var(--muted);
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      display: flex; gap: 12px; align-items: center; background: var(--bg-deep);
+    }
+    footer .rec-indicator { display: none; align-items: center; gap: 5px; color: var(--bad); font-size: 11px; font-weight: 600; }
+    footer .rec-indicator.visible { display: flex; }
+    footer .rec-indicator .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--bad); animation: pulse 1.4s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.45; transform: scale(0.85); } }
+    button.fbtn {
+      background: transparent; color: var(--fg);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer;
+      transition: background 120ms ease, border-color 120ms ease;
+    }
+    button.fbtn:hover { background: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.2); }
+    button.fbtn.primary { background: rgba(217, 122, 53, 0.15); border-color: rgba(217, 122, 53, 0.4); color: var(--sparkle); }
+    button.fbtn.primary:hover { background: rgba(217, 122, 53, 0.25); }
+    button.fbtn.recording { background: rgba(224, 96, 107, 0.18); border-color: rgba(224, 96, 107, 0.5); color: var(--bad); }
+  
+    /* ---------- DEMO additions (not in the shipped app) ---------- */
+    .tile canvas { width: 100%; height: 100%; display: block; background: #000; }
+    .demo-flag {
+      display: inline-flex; align-items: center; gap: 6px;
+      margin-left: 10px; padding: 2px 8px; border-radius: 999px;
+      border: 1px solid rgba(230, 196, 106, 0.45); color: var(--sun);
+      font-size: 10.5px; letter-spacing: 0.6px; text-transform: uppercase;
+    }
+    .tile .sim {
+      position: absolute; right: 8px; bottom: 8px;
+      background: rgba(10, 8, 14, 0.7); border: 1px solid var(--tile-border);
+      border-radius: 5px; padding: 1px 6px; font-size: 10px; color: var(--muted);
+      letter-spacing: 0.4px; text-transform: uppercase;
+    }
+    .tile .clock {
+      position: absolute; left: 8px; bottom: 8px; font: 11px/1 ui-monospace, Consolas, monospace;
+      color: rgba(255,255,255,0.8); text-shadow: 0 1px 2px #000;
+    }
+    #toast {
+      position: fixed; left: 50%; bottom: 46px; transform: translateX(-50%) translateY(20px);
+      background: var(--card); border: 1px solid var(--tile-border); color: var(--fg);
+      padding: 8px 14px; border-radius: 8px; font-size: 12px; opacity: 0;
+      transition: opacity 200ms ease, transform 200ms ease; pointer-events: none; z-index: 50;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    @media (max-width: 640px) {
+      #grid.n3, #grid.n4 { grid-template-columns: 1fr; grid-template-rows: repeat(4, minmax(160px, 1fr)); overflow-y: auto; }
+      header .brand .tagline { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  </style>
+</head>
+<body>
+  <!-- Launch splash, as in the shipped app. -->
+  <div id="splash">
+    <img src="assets/iris-icon.png" alt="" />
+    <div class="name">Iris</div>
+    <div class="tagline">by Wizard Industries</div>
+    <div class="loading">Demo &middot; simulated feeds</div>
+  </div>
+
+  <div id="app">
+    <header>
+      <span class="brand">
+        <img src="assets/iris-icon.png" alt="" />
+        <span class="name">Iris</span>
+        <span class="tagline">by Wizard Industries</span>
+      </span>
+      <span class="demo-flag" title="This page is a demo. No phone is connected; the camera feeds are drawn in your browser.">Demo &middot; no phone connected</span>
+      <span class="grid-count" id="grid-count"></span>
+      <span class="spacer"></span>
+      <button class="add-cam" id="add-cam" title="Add a camera slot">+</button>
+    </header>
+
+    <div id="ip-bar">
+      <span class="ip-label">PC address:</span>
+      <span class="ip-chip"><code>192.168.1.20:8889</code><button class="copy" data-copy="192.168.1.20:8889">copy</button></span>
+      <span class="ip-chip cross"><code>cross-network via TURN</code></span>
+      <span class="ip-label" style="margin-left:auto">example addresses for the demo</span>
+    </div>
+
+    <main><div id="grid"></div></main>
+
+    <footer>
+      <span class="rec-indicator" id="rec-indicator"><span class="pulse"></span><span>REC</span></span>
+      <span>Demo build. The real app receives a phone's camera over WebRTC.</span>
+      <span style="flex: 1"></span>
+      <button class="fbtn" id="record-toggle">Record</button>
+      <button class="fbtn" id="share">Share</button>
+      <button class="fbtn primary" id="reconnect">Reconnect all</button>
+    </footer>
+  </div>
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+  (function () {
+    'use strict';
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var grid = document.getElementById('grid');
+    var count = document.getElementById('grid-count');
+    var toastEl = document.getElementById('toast');
+    var toastT = null;
+    function toast(msg) {
+      toastEl.textContent = msg; toastEl.classList.add('show');
+      clearTimeout(toastT); toastT = setTimeout(function () { toastEl.classList.remove('show'); }, 2200);
+    }
+
+    // Each simulated feed is a small scene drawn every frame. They exist so the
+    // interface can be seen doing its job; none of them is a real camera.
+    var SCENES = {
+      road: function (g, w, h, t) {             // a night drive, dash-mounted
+        var sky = g.createLinearGradient(0, 0, 0, h * 0.55);
+        sky.addColorStop(0, '#05060f'); sky.addColorStop(1, '#1b1630');
+        g.fillStyle = sky; g.fillRect(0, 0, w, h);
+        for (var i = 0; i < 60; i++) {
+          var sx = (i * 97.3) % w, sy = (i * 53.1) % (h * 0.45);
+          g.fillStyle = 'rgba(255,255,255,' + (0.3 + 0.5 * Math.abs(Math.sin(t / 900 + i))) + ')';
+          g.fillRect(sx, sy, 1.2, 1.2);
+        }
+        var hy = h * 0.55, vx = w / 2;
+        g.fillStyle = '#0d0b12'; g.fillRect(0, hy, w, h - hy);
+        g.fillStyle = '#16131d';
+        g.beginPath(); g.moveTo(vx - 4, hy); g.lineTo(vx + 4, hy); g.lineTo(w * 0.95, h); g.lineTo(w * 0.05, h); g.closePath(); g.fill();
+        g.strokeStyle = 'rgba(230,196,106,0.85)'; g.lineWidth = 2;
+        var off = (t / 18) % 60;
+        for (var d = 0; d < 12; d++) {
+          var z = (d * 60 + off) / 720;
+          var y1 = hy + (h - hy) * z * z, y2 = hy + (h - hy) * Math.min(1, (z + 0.03) * (z + 0.03) * 1.2);
+          g.beginPath(); g.moveTo(vx, y1); g.lineTo(vx, y2); g.stroke();
+        }
+        for (var k = 0; k < 3; k++) {               // oncoming lights
+          var p = ((t / 2600 + k / 3) % 1);
+          var ly = hy + (h - hy) * p * p, lx = vx - 10 - (w * 0.38) * p * p;
+          var r = 1 + 7 * p;
+          var grad = g.createRadialGradient(lx, ly, 0, lx, ly, r * 5);
+          grad.addColorStop(0, 'rgba(255,245,220,0.95)'); grad.addColorStop(1, 'rgba(255,245,220,0)');
+          g.fillStyle = grad; g.beginPath(); g.arc(lx, ly, r * 5, 0, 7); g.fill();
+        }
+        g.fillStyle = 'rgba(0,0,0,0.55)'; g.fillRect(0, h * 0.9, w, h * 0.1);   // dash
+      },
+      camp: function (g, w, h, t) {             // a campsite under dark sky
+        var sky = g.createLinearGradient(0, 0, 0, h);
+        sky.addColorStop(0, '#02030a'); sky.addColorStop(0.7, '#0c1025'); sky.addColorStop(1, '#141024');
+        g.fillStyle = sky; g.fillRect(0, 0, w, h);
+        g.save(); g.translate(w * 0.55, h * 0.1); g.rotate(-0.5);
+        var mw = g.createLinearGradient(0, -40, 0, 40);
+        mw.addColorStop(0, 'rgba(160,150,220,0)'); mw.addColorStop(0.5, 'rgba(200,190,255,0.12)'); mw.addColorStop(1, 'rgba(160,150,220,0)');
+        g.fillStyle = mw; g.fillRect(-w, -40, w * 2, 80); g.restore();
+        for (var i = 0; i < 140; i++) {
+          var sx = (i * 131.7) % w, sy = (i * 71.3) % (h * 0.75);
+          var tw = 0.4 + 0.6 * Math.abs(Math.sin(t / 1300 + i * 1.7));
+          g.fillStyle = 'rgba(255,255,255,' + (tw * (i % 5 === 0 ? 1 : 0.6)) + ')';
+          g.fillRect(sx, sy, i % 9 === 0 ? 2 : 1, i % 9 === 0 ? 2 : 1);
+        }
+        g.fillStyle = '#07060b';
+        g.beginPath(); g.moveTo(0, h * 0.78);
+        for (var x = 0; x <= w; x += 20) g.lineTo(x, h * 0.74 + Math.sin(x / 60) * 8 + Math.sin(x / 17) * 3);
+        g.lineTo(w, h); g.lineTo(0, h); g.fill();
+        var tx = w * 0.3, ty = h * 0.86;
+        g.fillStyle = '#1a1420'; g.beginPath(); g.moveTo(tx - 50, ty); g.lineTo(tx, ty - 55); g.lineTo(tx + 50, ty); g.fill();
+        var fl = 0.8 + 0.2 * Math.sin(t / 90) + 0.1 * Math.sin(t / 37);
+        var fx = w * 0.62, fy = h * 0.88;
+        var fire = g.createRadialGradient(fx, fy, 0, fx, fy, 70 * fl);
+        fire.addColorStop(0, 'rgba(255,190,110,0.9)'); fire.addColorStop(0.3, 'rgba(217,122,53,0.45)'); fire.addColorStop(1, 'rgba(217,122,53,0)');
+        g.fillStyle = fire; g.beginPath(); g.arc(fx, fy, 70 * fl, 0, 7); g.fill();
+      },
+      desk: function (g, w, h, t) {             // a workbench, lamp light
+        g.fillStyle = '#120f16'; g.fillRect(0, 0, w, h);
+        var lamp = g.createRadialGradient(w * 0.7, h * 0.15, 10, w * 0.6, h * 0.5, w * 0.8);
+        lamp.addColorStop(0, 'rgba(244,162,97,0.35)'); lamp.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = lamp; g.fillRect(0, 0, w, h);
+        g.fillStyle = '#231a2b'; g.fillRect(0, h * 0.62, w, h * 0.38);
+        g.fillStyle = '#3a2d44'; g.fillRect(w * 0.18, h * 0.42, w * 0.3, h * 0.22);        // printer
+        g.fillStyle = '#e6c46a'; g.fillRect(w * 0.18 + ((t / 25) % (w * 0.3 - 10)), h * 0.46, 10, 4); // print head
+        g.fillStyle = '#d97a35'; g.fillRect(w * 0.26, h * 0.58, w * 0.14, h * 0.04 + 2 * Math.sin(t / 1600));
+        g.fillStyle = 'rgba(108,191,115,' + (0.5 + 0.5 * Math.sin(t / 400)) + ')';
+        g.beginPath(); g.arc(w * 0.46, h * 0.45, 3, 0, 7); g.fill();
+      }
+    };
+
+    var slots = [
+      { id: 'iris1', name: 'Dash cam', scene: 'road', state: 'live' },
+      { id: 'iris2', name: 'Campsite', scene: 'camp', state: 'live' },
+      { id: 'iris3', name: 'Workbench', scene: 'desk', state: 'connecting' }
+    ];
+    var tiles = [];
+
+    function render() {
+      grid.innerHTML = ''; tiles = [];
+      var n = slots.length;
+      grid.className = n === 1 ? 'n1' : n === 2 ? 'n2' : n <= 4 ? 'n' + n : 'nmany';
+      count.textContent = n + (n === 1 ? ' camera' : ' cameras');
+      slots.forEach(function (s, i) {
+        var tile = document.createElement('div'); tile.className = 'tile';
+        var label = document.createElement('div'); label.className = 'tile-label ' + s.state;
+        label.innerHTML = '<span class="dot"></span><span class="name"></span>';
+        label.querySelector('.name').textContent = s.name + ' · ' + s.id;
+        tile.appendChild(label);
+        var actions = document.createElement('div'); actions.className = 'tile-actions';
+        actions.innerHTML = '<button type="button">Rename</button><button type="button">Remove</button>';
+        actions.children[0].onclick = function () { var v = prompt('Name this camera', s.name); if (v) { s.name = v.slice(0, 32); render(); } };
+        actions.children[1].onclick = function () { slots.splice(i, 1); render(); };
+        tile.appendChild(actions);
+        if (s.scene) {
+          var c = document.createElement('canvas'); tile.insertBefore(c, label);
+          var clock = document.createElement('span'); clock.className = 'clock'; tile.appendChild(clock);
+          var sim = document.createElement('span'); sim.className = 'sim'; sim.textContent = 'simulated feed'; tile.appendChild(sim);
+          tiles.push({ c: c, g: c.getContext('2d'), s: s, clock: clock });
+        } else {
+          var ov = document.createElement('div'); ov.className = 'tile-overlay';
+          ov.innerHTML = '<h3>Waiting for a phone</h3><p>Set the Iris phone app&rsquo;s camera slot to <code></code> to fill this tile.</p>';
+          ov.querySelector('code').textContent = s.id;
+          tile.appendChild(ov);
+        }
+        grid.appendChild(tile);
+      });
+      if (!slots.length) {
+        grid.className = 'n1';
+        grid.innerHTML = '<div class="tile"><div class="tile-overlay"><h3>No camera slots</h3><p>Press + to add one.</p></div></div>';
+      }
+    }
+
+    // The workbench feed "connects" after a moment, the way a real phone would.
+    setTimeout(function () { var s = slots.filter(function (x) { return x.id === 'iris3'; })[0]; if (s) { s.state = 'live'; render(); } }, 3200);
+
+    function draw(t) {
+      tiles.forEach(function (tl) {
+        var r = tl.c.getBoundingClientRect();
+        var w = Math.max(1, Math.round(r.width)), h = Math.max(1, Math.round(r.height));
+        if (tl.c.width !== w || tl.c.height !== h) { tl.c.width = w; tl.c.height = h; }
+        SCENES[tl.s.scene](tl.g, w, h, reduce ? 0 : t);
+        if (tl.s.state !== 'live') { tl.g.fillStyle = 'rgba(0,0,0,0.55)'; tl.g.fillRect(0, 0, w, h); }
+        tl.clock.textContent = new Date().toLocaleTimeString();
+      });
+      if (!reduce) requestAnimationFrame(draw);
+    }
+
+    document.getElementById('add-cam').onclick = function () {
+      var n = 1; while (slots.some(function (s) { return s.id === 'iris' + n; })) n++;
+      slots.push({ id: 'iris' + n, name: 'Camera ' + n, scene: null, state: 'offline' });
+      render();
+    };
+    var recOn = false;
+    document.getElementById('record-toggle').onclick = function () {
+      recOn = !recOn;
+      this.classList.toggle('recording', recOn); this.textContent = recOn ? 'Stop recording' : 'Record';
+      document.getElementById('rec-indicator').classList.toggle('visible', recOn);
+      toast(recOn ? 'Recording (demo: nothing is saved)' : 'Recording stopped');
+    };
+    document.getElementById('share').onclick = function () { toast('In the real app this opens a private viewing page for others.'); };
+    document.getElementById('reconnect').onclick = function () { toast('Reconnecting all cameras… (demo)'); };
+    Array.prototype.forEach.call(document.querySelectorAll('[data-copy]'), function (b) {
+      b.onclick = function () {
+        try { navigator.clipboard.writeText(b.getAttribute('data-copy')); } catch (e) {}
+        toast('Copied (an example address)');
+      };
+    });
+
+    render();
+    requestAnimationFrame(draw);
+    setTimeout(function () { document.getElementById('splash').classList.add('hidden'); }, 1300);
+  })();
+  </script>
+</body>
+</html>

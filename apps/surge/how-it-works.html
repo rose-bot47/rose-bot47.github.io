@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Surge — How this works, and what it cannot tell you</title>
+<meta name="description" content="The limits of Surge, stated plainly: what the elevation data is, how wrong it is, why there is no projected-water overlay, and who to ask instead." />
+<style>
+  :root{
+    --ink:oklch(0.09 0.02 280); --ink-2:oklch(0.13 0.03 285);
+    --beam:oklch(0.88 0.09 95); --amethyst:oklch(0.62 0.17 305);
+    --line:oklch(0.30 0.03 290); --line-soft:oklch(0.22 0.025 290);
+    --text:oklch(0.93 0.01 90); --muted:oklch(0.62 0.02 290);
+    --stop:oklch(0.65 0.20 25); --ok:oklch(0.72 0.14 155); --warn:oklch(0.72 0.16 50);
+    --serif:Georgia,"Times New Roman",serif;
+    --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--ink); color:var(--text);
+    font:17px/1.62 var(--serif); -webkit-font-smoothing:antialiased;
+    padding: env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:0 clamp(20px,5vw,56px)}
+  header{border-bottom:1px solid var(--line);padding:clamp(40px,7vw,88px) 0 34px;margin-bottom:8px}
+  header .label,.label{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.30em;
+    text-transform:uppercase;color:var(--amethyst);display:block
+  }
+  header h1{
+    font-size:clamp(34px,5.4vw,64px);font-weight:400;line-height:1.04;
+    letter-spacing:-.01em;margin:16px 0 18px;max-width:20ch
+  }
+  header p{font-size:clamp(17px,2vw,21px);color:var(--muted);font-style:italic;max-width:56ch;margin:0}
+  header .back{
+    display:inline-block;margin-top:26px;font-family:var(--mono);font-size:10.5px;
+    letter-spacing:.18em;text-transform:uppercase;color:var(--muted);
+    text-decoration:none;border-bottom:1px solid var(--line);padding-bottom:3px
+  }
+  header .back:hover{color:var(--beam);border-color:var(--beam)}
+
+  section{
+    display:grid;grid-template-columns:200px 1fr;gap:clamp(24px,5vw,64px);
+    padding:clamp(40px,6vw,72px) 0;border-bottom:1px solid var(--line-soft);
+    align-items:start
+  }
+  section > .head{position:sticky;top:32px}
+  section > .head h2{
+    font-size:21px;font-weight:400;margin:10px 0 0;line-height:1.25;max-width:14ch
+  }
+  section .body{max-width:66ch}
+  section .body > :first-child{margin-top:0}
+  p{margin:0 0 17px}
+  em{color:var(--beam);font-style:italic}
+  strong{font-weight:400;color:var(--beam)}
+  a{color:var(--muted);text-decoration:none;border-bottom:1px solid var(--line)}
+  a:hover{color:var(--beam);border-color:var(--beam)}
+
+  .rule{width:64px;height:1px;background:var(--amethyst);margin:0 0 4px}
+
+  table{width:100%;border-collapse:collapse;margin:8px 0 20px;font-size:14.5px}
+  th{
+    text-align:left;font-family:var(--mono);font-weight:400;font-size:9.5px;
+    letter-spacing:.16em;text-transform:uppercase;color:var(--muted);
+    padding:0 12px 8px 0;border-bottom:1px solid var(--line)
+  }
+  th.num,td.num{text-align:right;padding-right:0}
+  td{padding:10px 12px 10px 0;border-bottom:1px solid var(--line-soft);vertical-align:top}
+  td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+  td.wrong{color:var(--stop)}
+  td.right{color:var(--ok)}
+  caption{
+    caption-side:bottom;text-align:left;font-family:var(--mono);font-size:10px;
+    color:var(--muted);padding-top:10px;line-height:1.7;letter-spacing:.04em
+  }
+
+  blockquote{
+    margin:22px 0;padding:2px 0 2px 20px;border-left:2px solid var(--stop);
+    font-size:19px;line-height:1.45
+  }
+  blockquote.good{border-color:var(--ok)}
+  blockquote p{margin:0;color:var(--text)}
+
+  ul{margin:0 0 17px;padding-left:20px}
+  li{margin-bottom:9px;color:var(--muted)}
+  li strong{color:var(--text)}
+
+  .tablewrap{overflow-x:auto}
+  footer{padding:60px 0 80px;color:var(--muted);font-size:13.5px}
+  footer .src{font-family:var(--mono);font-size:10.5px;line-height:2;letter-spacing:.04em}
+
+  @media (max-width:860px){
+    section{grid-template-columns:1fr;gap:14px}
+    section > .head{position:static}
+    section > .head h2{max-width:none}
+  }
+  a:focus-visible{outline:2px solid var(--beam);outline-offset:3px}
+  ::selection{background:color-mix(in oklch,var(--amethyst) 35%,transparent)}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <span class="label">Surge</span>
+    <h1>How this works, and what it cannot tell you.</h1>
+    <p>Somebody is going to type their own address into this and make a real decision from the
+       answer. So this page is not the small print. It is the product.</p>
+    <a class="back" href="index.html">&larr; Back to the map</a>
+  </header>
+
+  <section>
+    <div class="head"><div class="rule"></div><span class="label">01</span><h2>The one-paragraph version</h2></div>
+    <div class="body">
+      <p>Surge asks several free, public elevation datasets how high a point is, and shows you
+         all of their answers side by side instead of picking one. In most of the world those
+         answers disagree with each other by <em>several metres</em>. The amount of sea-level rise
+         expected by 2050 is about <em>a quarter of a metre</em>. When the disagreement between
+         your instruments is ten or twenty times larger than the thing you are trying to measure,
+         the honest output is not a number on a map &mdash; it is that sentence.</p>
+      <p>Where a real, surveyed, regulatory flood map exists &mdash; which in practice means the
+         United States &mdash; Surge goes and fetches it, and that answer outranks everything
+         else on the page.</p>
+    </div>
+  </section>
+
+  <section id="dsm">
+    <div class="head"><div class="rule"></div><span class="label">02</span><h2>The elevation data is measuring your roof</h2></div>
+    <div class="body">
+      <p>This is the single most important thing on this page, and almost nothing that uses this
+         data says it out loud.</p>
+      <p>The global elevation datasets available for free are, with one exception,
+         <strong>Digital Surface Models</strong>. The Copernicus DEM documentation states it
+         plainly: the model &ldquo;represents the surface of the Earth including buildings,
+         infrastructure and vegetation.&rdquo; SRTM is C-band radar flown in 2000; it returns
+         the top of the tree canopy and the tops of rooftops.</p>
+      <p>So when a global DEM says a point is eight metres up, it may be describing a
+         three-storey building, or a stand of mature trees, standing on ground that is at two
+         metres. The error is not random. It is <em>systematically high, and largest exactly in
+         the dense urban and vegetated places where people actually live.</em></p>
+      <p>A Digital Terrain Model &mdash; bare earth, buildings and trees removed &mdash; is what you
+         actually want. Nationally, some exist: the USGS 3DEP programme publishes one at 10 m for
+         the United States, and Surge uses it when you are inside US coverage. Globally, no free
+         one exists at useful resolution.</p>
+    </div>
+  </section>
+
+  <section id="calibration">
+    <div class="head"><div class="rule"></div><span class="label">03</span><h2>Here is the instrument being wrong</h2></div>
+    <div class="body">
+      <p>A tool that tells you about its error in the abstract is asking you to take its word for
+         it. So instead: here are four places whose true elevation is not in dispute, read live
+         through the same pipeline this site uses for your address. Three of them &mdash; Schiphol,
+         Venice, and New&nbsp;Orleans &mdash; are the calibration buttons on the map page, so you can
+         reproduce those rows yourself. Miami Beach is included below because it shows the sharpest
+         possible contrast between a surface model and bare earth at the same coordinate; it isn't
+         one of the three buttons, but you can read it yourself by searching or clicking the map at
+         the same spot.</p>
+      <div class="tablewrap">
+        <table>
+          <caption>Readings taken 17 September 2026 via Open-Meteo (Copernicus GLO-90) and Open Topo Data
+                   (SRTM 1&nbsp;arc-second, Mapzen, USGS 3DEP). Schiphol, Venice and New Orleans are
+                   reproducible from the map page's calibration buttons; Miami Beach is not a button
+                   (see above) but can be read the same way at the same coordinate. Since 23 September
+                   2026 the live page reads Mapzen and 3DEP from their own services (section 08);
+                   the SRTM column cannot currently be reproduced from a browser.</caption>
+          <thead>
+            <tr>
+              <th>Place</th>
+              <th class="num">Truth</th>
+              <th class="num">Copernicus 90&nbsp;m</th>
+              <th class="num">SRTM 30&nbsp;m</th>
+              <th class="num">Mapzen 30&nbsp;m</th>
+              <th class="num">USGS 10&nbsp;m</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Schiphol, Netherlands<br /><span style="color:var(--muted);font-size:12.5px">famously below sea level</span></td>
+              <td class="num">&minus;4 m</td>
+              <td class="num wrong">+6</td><td class="num wrong">+7</td><td class="num wrong">+7</td>
+              <td class="num" style="color:var(--muted)">n/a</td>
+            </tr>
+            <tr>
+              <td>Venice, Italy</td>
+              <td class="num">≈1 m</td>
+              <td class="num wrong">+6</td><td class="num wrong">+11</td><td class="num wrong">+11</td>
+              <td class="num" style="color:var(--muted)">n/a</td>
+            </tr>
+            <tr>
+              <td>Miami Beach, Florida</td>
+              <td class="num">≈1.3 m</td>
+              <td class="num wrong">+6</td><td class="num wrong">+9</td><td class="num">+2</td>
+              <td class="num right">+1.33</td>
+            </tr>
+            <tr>
+              <td>Mid-City, New Orleans</td>
+              <td class="num">≈0 m</td>
+              <td class="num">0</td><td class="num">+1</td><td class="num">0</td>
+              <td class="num right">&minus;0.01</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <blockquote>
+        <p>Three reputable global datasets place Schiphol airport &mdash; one of the most famously
+           below-sea-level places on Earth &mdash; between six and seven metres <em>above</em> sea
+           level. They are wrong by about ten metres, in the same direction, all three.</p>
+      </blockquote>
+      <p>Venice reads as an alpine foothill. Miami Beach is overstated by up to 7.7 m against the
+         US bare-earth data measured at the same coordinate. And note the last row: where the
+         terrain is flat, open and unbuilt, the global data is fine. <strong>The error is not
+         everywhere. It is concentrated exactly where the buildings and the trees are.</strong></p>
+      <p>This is the reason the calibration buttons are on the front page rather than buried here.
+         A measuring instrument you have never seen fail is an instrument whose error you do not
+         know.</p>
+    </div>
+  </section>
+
+  <section id="nobathtub">
+    <div class="head"><div class="rule"></div><span class="label">04</span><h2>Why there is no blue overlay</h2></div>
+    <div class="body">
+      <p>Most tools of this kind colour in everything below a chosen contour and call it a flood
+         projection. Surge deliberately does not, and the reason is arithmetic rather than
+         taste.</p>
+      <p>Copernicus states an absolute vertical accuracy of <em>under 4 metres at 90% confidence</em>.
+         Measured in the table above, the practical disagreement between free global datasets runs
+         to <em>7 to 10 metres</em> in built-up places. Mean sea-level rise to 2050 is
+         <em>0.15 to 0.30 m</em>. Drawing a one-metre contour on data with four-plus metres of
+         error would not be showing you a risk. It would be colouring in the error bar and
+         printing it in blue.</p>
+      <p style="font-size:13.5px;color:var(--muted)"><strong>Known inconsistency, left open rather
+         than guessed at:</strong> this page states the measured disagreement as 7&ndash;10&nbsp;m;
+         the README states it as 4&ndash;10&nbsp;m. Both describe the same underlying measurement.
+         We could not derive a single correct range from the calibration-table data above without
+         picking, unstated, which readings to include &mdash; so instead of choosing one, we are
+         naming the disagreement here rather than hiding it.</p>
+      <p>And a contour is not a flood model even when the elevation is perfect. Filling everything
+         below a line ignores, at minimum:</p>
+      <ul>
+        <li><strong>Levees, dikes, seawalls and flood gates.</strong> New Orleans and most of the
+            Netherlands sit below sea level right now and are dry.</li>
+        <li><strong>Hydraulic connectivity.</strong> A low spot with no path to the sea does not
+            fill. Bathtub models flood inland hollows that water cannot reach.</li>
+        <li><strong>Storm surge and wave setup</strong>, which over a twenty-year horizon dominate
+            mean sea level completely.</li>
+        <li><strong>Land subsidence</strong>, which in places like Jakarta, Houston and parts of
+            the Central Valley is moving the ground down faster than the sea is moving up.</li>
+        <li><strong>Rainfall and drainage.</strong> A great deal of real flood damage is pluvial
+            &mdash; water that fell on you and had nowhere to go &mdash; and has no relationship to
+            the sea at all.</li>
+      </ul>
+      <p>Real flood models are hydraulic simulations built on surveyed terrain, local defences and
+         storm statistics. That is what FEMA, the Environment Agency and their equivalents publish,
+         at enormous cost. This site is not one, does not approximate one, and points at them
+         instead.</p>
+    </div>
+  </section>
+
+  <section id="twentyyears">
+    <div class="head"><div class="rule"></div><span class="label">05</span><h2>Twenty years is the wrong question, asked a better way</h2></div>
+    <div class="body">
+      <p>Over a twenty-year horizon the mean sea level barely moves, and the choice of emissions
+         scenario barely matters. IPCC AR6 gives global mean rise by 2050 as 0.15&ndash;0.23 m in
+         the very low emissions scenario and 0.20&ndash;0.29 m in the very high one. The entire
+         span of human choice shows up at 2050 as <em>about six centimetres</em>. The scenarios
+         diverge after that, dramatically &mdash; but not within twenty years.</p>
+      <p>What changes inside twenty years is <strong>frequency</strong>. NOAA's 2022 interagency
+         report projects 10&ndash;12 inches of rise along the US coastline by 2050 &mdash; as much
+         in twenty-five years as the previous hundred &mdash; and then states the consequence
+         plainly:</p>
+      <blockquote class="good">
+        <p>By 2050, moderate flooding is expected to occur more than <em>ten times</em> as often as
+           it does today, changing in some places from a single event every two to five years to
+           multiple events each year.</p>
+      </blockquote>
+      <p>That is the mechanism worth understanding. Raise the baseline a little and a large number
+         of ordinary high tides and modest storms cross the threshold that puts water in a street.
+         The map does not get a new coastline. The calendar gets a lot more bad days.</p>
+      <p>So if you are asking a twenty-year question about a specific house, the useful things to
+         find out are: how often does this street flood <em>now</em>, is the ground here subsiding,
+         what is the drainage like, and what does the regulatory flood map say. A global elevation
+         grid answers none of those.</p>
+    </div>
+  </section>
+
+  <section id="readout">
+    <div class="head"><div class="rule"></div><span class="label">06</span><h2>The four numbers under the pin</h2></div>
+    <div class="body">
+      <p>Drop a pin anywhere and a small glass window opens beneath it with four large numbers,
+         each written out of its real range and each with a meter under it. The meters run red to
+         green, and the direction flips depending on whether a higher number is worse. They are
+         built so that a big number can never look more certain than the instruments behind it.</p>
+      <p>Each of the four is a door. Click one and a panel slides up from the bottom of the map with
+         everything about that number on its own: what exactly it measures, which agency or dataset
+         measures it, what it means, how much certainty that one measurement can give you by itself,
+         and precisely what came back at your point. While it is open the window shrinks to a strip of
+         four tabs so the pin stays in view. The pin always sits at the top middle of the map with the
+         window beneath it, whether you clicked or searched. If you would rather explore the map
+         without dropping pins, switch <em>Click</em> to <em>Just pans</em>; dragging pans in both modes.</p>
+      <ul>
+        <li><strong>Chance of the mapped flood, next 20 years, out of 100.</strong> FEMA defines its
+            zones by <em>annual</em> chance. Over twenty years that compounds: 1% a year becomes at
+            least 18%, and 0.2% a year becomes about 4% (FEMA's own &ldquo;26% over a 30-year
+            mortgage&rdquo; is the same arithmetic). So a 1% zone reads <em>&ge;18</em>, a 0.2% zone
+            reads <em>4&ndash;18</em>, and a minimal zone reads <em>&lt;4</em>. A zone that is lower
+            risk <strong>only because a levee is there</strong> reads <em>&lt;18</em> with the words
+            &ldquo;only while the levee holds&rdquo;, never green. It is the chance of the flood the
+            zone is defined by, not a model of your particular house.</li>
+        <li><strong>Ground height above sea level</strong>, on a &minus;5 to 25 m scale. Where a
+            bare-earth reading exists (US only) it is shown as a point, with an outline around the
+            spread of the rooftop-reading datasets. Where only surface models answered, you get the
+            <em>range</em> they span instead of a point, and the coloured track goes grey: those
+            models measure roofs and trees, so the colour would be a claim about safety that they
+            have not earned.</li>
+        <li><strong>Disagreement between datasets</strong>, out of 10 m, with a tick at the 25 cm of
+            rise due by 2050. When the tick is buried at the far left of a red bar, you are looking
+            at the whole point of this site.</li>
+        <li><strong>Depth of the 1% flood over the ground</strong>, out of 5 m: FEMA's base flood
+            elevation minus measured bare earth. It only exists where FEMA publishes a single base
+            flood elevation <em>and</em> a bare-earth reading answered, so most of the time this card
+            is empty and says <em>the instruments can't see this here</em>. That empty card is the
+            product working, not failing. Older FEMA panels can use a different vertical datum
+            (NGVD29, up to about 1.5 m off), which is why it carries a &ldquo;check datum&rdquo; label.</li>
+      </ul>
+      <p>Every card also carries a confidence chip: <em>regulatory map</em> or <em>bare earth</em>
+         when a real instrument can see the thing, amber when it can only bound it, and a hatched,
+         empty meter when it cannot see it at all. A question mark means we asked and got no answer;
+         a dash means there was nothing here to ask.</p>
+    </div>
+  </section>
+
+  <section id="femazoom">
+    <div class="head"><div class="rule"></div><span class="label">07</span><h2>Why the flood map changes as you zoom</h2></div>
+    <div class="body">
+      <p>FEMA's server publishes a scale limit on its flood-zone layer: it will not draw zones any
+         wider than <em>1:36,112</em>, which is about zoom 14 on this map. Ask for more and it quietly
+         returns a blank image. That is why the flood layer used to appear only when you were almost
+         all the way in. The layer panel on the map now tells you which of three things you are
+         looking at:</p>
+      <ul>
+        <li><strong>Native scale</strong> (zoom 14 and closer): FEMA's zones exactly as FEMA draws them.</li>
+        <li><strong>Real zones, drawn smaller</strong> (zoom 10 to 14): FEMA's server decides scale
+            from a tile's size in inches, so each tile is requested at a lower resolution setting,
+            which makes the server draw it as if you were zoomed in. It is the same data, shrunk to
+            fit. Measured on 23 September 2026 this costs 0.2&ndash;1.2 seconds a tile.</li>
+        <li><strong>Overview, generalized</strong> (wider than zoom 10): the same trick at zoom 9 took
+            up to 11 seconds a tile and at zoom 8 up to 26, far too slow to ask live. So the zones for the
+            lower 48 were fetched <em>once</em>, ahead of time, at zoom 10, four states at a time, skipping
+            every place FEMA's availability layer says has no digital map. Each fetched pixel was sorted
+            into FEMA's classes by its colour. Then, going out one zoom at a time, every pixel of the
+            overview records <em>how much of its ground</em> lies in each class: an exact area average,
+            never &ldquo;any zone anywhere in this pixel, so paint it.&rdquo; On the map the colour is the
+            class covering the most ground and the strength of the colour is how much ground that is, so a
+            solid patch means most of the land there is mapped floodplain and a faint wash means some of it
+            is. Zone D (FEMA has <em>not studied</em> the hazard) covers whole rural counties and is only
+            ever drawn faintly, so it cannot read as the biggest danger on the continent.
+            <br />The colours keep FEMA's own families (blue for the 1% zone, orange for 0.2%, a hatched
+            amber for &ldquo;lower risk only because of a levee&rdquo;) so they mean the same thing at every
+            zoom, but they are stronger than FEMA's, because FEMA's pale wash disappears on a globe seen from
+            space. The date the overview was fetched, and any states not yet fetched, are printed on the map's
+            layer card. Alaska, Hawaii and the territories are not in the overview yet; there the map still
+            shows FEMA's <em>availability</em> layer, where a digital flood map exists at all. From zoom 10
+            the live FEMA tiles take over.</li>
+      </ul>
+      <p>The overview is a picture of FEMA's map, not a new analysis. It is exactly as current as the day
+         it was fetched, it inherits every gap and every levee assumption in FEMA's map, and it answers
+         nothing about a single address. For that, zoom in or drop a pin.</p>
+      <p>Outside the United States the panel says so plainly. There is no free global equivalent to
+         draw, and the map opens on the whole planet so that this is visible before you read anything.</p>
+    </div>
+  </section>
+
+  <section id="numbers">
+    <div class="head"><div class="rule"></div><span class="label">08</span><h2>Where every number comes from</h2></div>
+    <div class="body">
+      <p>Nothing on this site is estimated by us. Every figure is fetched live or cited below.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Source</th><th>Used for</th><th>Licence</th></tr></thead>
+          <tbody>
+            <tr><td>Copernicus DEM GLO-90 <span style="color:var(--muted)">(via Open-Meteo)</span></td>
+                <td>Global elevation, 90 m, surface model</td>
+                <td>Free worldwide licence; API data CC-BY 4.0</td></tr>
+            <tr><td>SRTM 1 arc-second <span style="color:var(--muted)">(via Open Topo Data)</span></td>
+                <td>Global elevation, 30 m, surface model. <em>Currently unreadable from a browser; see below.</em></td>
+                <td>NASA/USGS, public domain</td></tr>
+            <tr><td>Mapzen / Terrarium <span style="color:var(--muted)">(Terrain Tiles on AWS Open Data)</span></td>
+                <td>Global composite, ~30 m, read from the tile pixel</td>
+                <td>Open, per constituent source; attribution below</td></tr>
+            <tr><td>USGS 3DEP <span style="color:var(--muted)">(Elevation Point Query Service)</span></td>
+                <td>US bare-earth terrain at the best resolution USGS holds for the point, often 1 m lidar</td>
+                <td>US Government, public domain</td></tr>
+            <tr><td>FEMA National Flood Hazard Layer</td>
+                <td>US regulatory flood zones, live from zoom 10; below that, a generalized copy fetched
+                    ahead of time and served from this site (date on the map)</td>
+                <td>US Government, public domain, no key</td></tr>
+            <tr><td>Nominatim / OpenStreetMap</td><td>Turning a place name into coordinates</td>
+                <td>ODbL 1.0</td></tr>
+            <tr><td>OpenFreeMap / OpenMapTiles</td><td>The basemap</td>
+                <td>MIT; tile data OpenStreetMap</td></tr>
+            <tr><td>IPCC AR6 WG1 Chapter 9 (2021)</td><td>Global sea-level projections</td><td>Cited, not redistributed</td></tr>
+            <tr><td>NOAA 2022 Sea Level Rise Technical Report</td><td>US rise and flood-frequency figures</td><td>US Government, public domain</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Required attribution, reproduced as the licence asks:
+        <span style="color:var(--muted)">&copy; DLR e.V. 2010-2014 and &copy; Airbus Defence and Space GmbH 2014-2018
+        provided under COPERNICUS by the European Union and ESA; all rights reserved.</span></p>
+      <p><strong>One thing we deliberately did not use.</strong> Climate Central's CoastalDEM is the
+         best-known correction for exactly the rooftop-and-canopy problem described above. We could
+         not retrieve its terms of use to confirm that redistribution is permitted, so it is not in
+         this tool. An unread licence is not an open licence.</p>
+      <p><strong>A source that stopped answering browsers.</strong> On 23 September 2026 the public
+         Open Topo Data API was found sending no CORS header, which means no web page can read its
+         answers: every browser request fails before it arrives. The Mapzen and 3DEP readings were
+         moved to sources that do allow it (the Terrarium tiles themselves, and USGS's own point
+         service). SRTM has no browser-readable mirror we could find, so Surge still asks for it,
+         and until that changes its row reads <em>could not ask</em> rather than quietly vanishing.</p>
+      <p>Terrain Tiles attribution, as the dataset requires:
+        <span style="color:var(--muted)">ArcticDEM terrain data DEM(s) were created from DigitalGlobe, Inc., imagery and
+        funded under National Science Foundation awards 1043681, 1559691, and 1542736; Australia terrain data
+        &copy; Commonwealth of Australia (Geoscience Australia) 2017; Austria terrain data &copy; offene Daten
+        &Ouml;sterreichs &ndash; Digitales Gel&auml;ndemodell (DGM) &Ouml;sterreich; Canada terrain data contains
+        information licensed under the Open Government Licence &ndash; Canada; Europe terrain data produced using
+        Copernicus data and information funded by the European Union &ndash; EU-DEM layers; Global ETOPO1 terrain
+        data U.S. National Oceanic and Atmospheric Administration; Mexico terrain data source: INEGI, Continental
+        relief, 2016; New Zealand terrain data Copyright 2011 Crown copyright (c) Land Information New Zealand and
+        the New Zealand Government (All rights reserved); Norway terrain data &copy; Kartverket; United Kingdom
+        terrain data &copy; Environment Agency copyright and/or database right 2015. All rights reserved; United
+        States 3DEP (formerly NED) and global GMTED2010 and SRTM terrain data courtesy of the U.S. Geological
+        Survey.</span></p>
+    </div>
+  </section>
+
+  <section id="privacy">
+    <div class="head"><div class="rule"></div><span class="label">09</span><h2>What happens to your address</h2></div>
+    <div class="body">
+      <p>There is no account, no sign-up, no email box, no analytics and no cookies on this site.</p>
+      <ul>
+        <li>When you search a place name, that text goes to <strong>Nominatim</strong>, OpenStreetMap's
+            public geocoder, and to nowhere else. It returns coordinates.</li>
+        <li>Coordinates &mdash; not your address &mdash; are then sent to the elevation and flood-map
+            services listed above.</li>
+        <li>Your address is <strong>never written into the page URL</strong>, so it cannot end up in
+            a browser history, a bookmark, a shared link, or a referrer header.</li>
+        <li>&ldquo;Use my location&rdquo; uses your browser's own geolocation. The coordinates are
+            used in the page and sent to the same elevation services. They are not stored.</li>
+        <li>Results are cached in memory for the life of the tab and discarded when you close it.</li>
+      </ul>
+      <p>Those third-party services have their own logs and their own policies; we do not control
+         them, and pretending otherwise would be the sort of claim this whole site exists to avoid.
+         If you would rather not send a place name anywhere at all, click the map instead &mdash;
+         that path never calls a geocoder.</p>
+    </div>
+  </section>
+
+  <section id="who">
+    <div class="head"><div class="rule"></div><span class="label">10</span><h2>Who to actually ask</h2></div>
+    <div class="body">
+      <p>If you are deciding where to live, whether to buy, or whether your family is safe, this
+         site is a starting point and not an answer. The people who genuinely know:</p>
+      <ul>
+        <li><strong>United States</strong> &mdash; the <a href="https://msc.fema.gov/portal/search" target="_blank" rel="noopener">FEMA Map Service Center</a>
+            for the official panel, and your county floodplain manager, who will know what the map
+            is missing. <a href="https://coast.noaa.gov/slr/" target="_blank" rel="noopener">NOAA's Sea Level Rise Viewer</a>
+            for surveyed coastal inundation.</li>
+        <li><strong>England</strong> &mdash; the Environment Agency's flood risk service.</li>
+        <li><strong>Netherlands</strong> &mdash; LIWO and the national risk viewers.</li>
+        <li><strong>Elsewhere</strong> &mdash; your national mapping agency or civil protection
+            authority. Many publish far better data than anything available globally.</li>
+        <li><strong>Anywhere</strong> &mdash; an elevation certificate from a licensed surveyor is
+            the only thing that actually measures the ground at your house. It costs a few hundred
+            dollars and it is the real version of what this site is estimating badly.</li>
+      </ul>
+      <blockquote class="good">
+        <p>If Surge has been useful, it has probably been by telling you that it could not help,
+           early enough for you to go and ask someone who can.</p>
+      </blockquote>
+    </div>
+  </section>
+
+  <footer>
+    <a class="back" href="index.html" style="margin-bottom:22px">&larr; Back to the map</a>
+    <p class="src">
+      Surge is a free public-service tool. No tracking, no accounts, no ads.<br />
+      Elevation via Open-Meteo (CC-BY 4.0), Terrain Tiles on AWS, USGS EPQS and Open Topo Data &middot; Basemap OpenFreeMap &copy; OpenMapTiles,
+      data from OpenStreetMap &middot; Geocoding &copy; OpenStreetMap contributors, ODbL<br />
+      &copy; DLR e.V. 2010-2014 and &copy; Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS
+      by the European Union and ESA; all rights reserved.
+    </p>
+  </footer>
+
+</div>
+</body>
+</html>

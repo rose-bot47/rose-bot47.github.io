@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Iris logo — V3 "friendly flower" redesign (Phase 4, 2026-06-07).
+
+  Rose's brief: "make it more friendly, a little bit less creepy." The
+  prior concentric-aperture mark (gen_icon_v2.mjs) read as a surveillance
+  EYE / camera pupil. Iris is the Greek RAINBOW + messenger goddess, so
+  this redesign leans into:
+    - an iris FLOWER (three upright standards + three falls, the classic
+      iris silhouette) rather than a camera aperture,
+    - a warm rainbow sweep across the petals (goddess-of-the-rainbow nod),
+    - a soft glowing heart instead of a dark pupil-hole.
+
+  Palette stays on the warm Wizard set Rose explicitly likes (no redesign
+  of colors): iris_deep backdrop, iris_amber / iris_sun / iris_sparkle
+  petals, with a couple of cooler rainbow accents kept warm-biased so the
+  whole thing still reads "warm Wizard," not "cold spectrum."
+
+  Viewbox is 64x64 to match the raster target. gen_icon_v3.mjs rasterizes
+  a palette-matched version of this silhouette to PNG (it does NOT parse
+  this SVG — it hand-draws the same shape language with zero deps).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Iris">
+  <defs>
+    <!-- Warm rainbow sweep for the petals: amber → sun → sparkle, with a
+         gentle rose and violet at the ends so it reads "rainbow" while
+         staying warm-biased. -->
+    <linearGradient id="irisPetal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"  stop-color="#e0606b"/>
+      <stop offset="28%" stop-color="#d97a35"/>
+      <stop offset="58%" stop-color="#e6c46a"/>
+      <stop offset="82%" stop-color="#f4a261"/>
+      <stop offset="100%" stop-color="#b06fc4"/>
+    </linearGradient>
+    <radialGradient id="irisHeart" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"  stop-color="#fbe7c0"/>
+      <stop offset="55%" stop-color="#f4a261"/>
+      <stop offset="100%" stop-color="#d97a35"/>
+    </radialGradient>
+    <radialGradient id="irisGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"  stop-color="#2a2030"/>
+      <stop offset="100%" stop-color="#1a1422"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Soft round backdrop (replaces the hard surveillance-iris disc). -->
+  <circle cx="32" cy="32" r="31" fill="url(#irisGlow)"/>
+  <circle cx="32" cy="32" r="31" fill="none" stroke="#3a2b48" stroke-width="1.2" opacity="0.6"/>
+
+  <!-- IRIS FLOWER: three upright "standard" petals + three lower "fall"
+       petals, arranged around a glowing heart. Rounded, organic, friendly. -->
+  <g>
+    <!-- Upright standards (top three), slightly translucent so they layer
+         like real iris petals. -->
+    <path d="M32 30 C 27 18, 27 9, 32 6  C 37 9, 37 18, 32 30 Z"
+          fill="url(#irisPetal)" opacity="0.96"/>
+    <path d="M32 31 C 22 24, 15 18, 13 12  C 20 11, 28 17, 32 31 Z"
+          fill="url(#irisPetal)" opacity="0.9"/>
+    <path d="M32 31 C 42 24, 49 18, 51 12  C 44 11, 36 17, 32 31 Z"
+          fill="url(#irisPetal)" opacity="0.9"/>
+
+    <!-- Lower falls (bottom three), the gentle drooping petals. -->
+    <path d="M32 33 C 27 46, 27 55, 32 58  C 37 55, 37 46, 32 33 Z"
+          fill="url(#irisPetal)" opacity="0.96"/>
+    <path d="M31 33 C 20 38, 12 44, 9 51  C 17 53, 27 46, 31 33 Z"
+          fill="url(#irisPetal)" opacity="0.9"/>
+    <path d="M33 33 C 44 38, 52 44, 55 51  C 47 53, 37 46, 33 33 Z"
+          fill="url(#irisPetal)" opacity="0.9"/>
+  </g>
+
+  <!-- Warm glowing heart (friendly, not a dark pupil). -->
+  <circle cx="32" cy="32" r="8.5" fill="url(#irisHeart)"/>
+  <circle cx="32" cy="32" r="8.5" fill="none" stroke="#fbe7c0" stroke-width="0.8" opacity="0.7"/>
+  <circle cx="32" cy="31" r="2.6" fill="#fff6e0" opacity="0.85"/>
+</svg>

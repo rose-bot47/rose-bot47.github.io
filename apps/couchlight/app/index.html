@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- No CSP needed for desktop Electron app -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Couchlight</title>
+    <link rel="icon" type="image/svg+xml" href="./assets/couchlight-icon-B2jaMc-B.svg" />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: #0f0f1a;
+        color: #ffffff;
+        overflow: hidden;
+      }
+      #root {
+        width: 100vw;
+        height: 100vh;
+      }
+    </style>
+    <!-- browser stand-in for the Electron bridge; see ../electron-stub.js -->
+    <script src="../electron-stub.js"></script>
+    <script type="module" crossorigin src="./assets/main-Dj5VJnia.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/main-By7AiAgN.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

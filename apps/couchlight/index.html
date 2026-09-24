@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Couchlight demo</title>
+<link rel="icon" type="image/svg+xml" href="app/assets/couchlight-icon-B2jaMc-B.svg">
+<!--
+  COUCHLIGHT, RUNNING IN A MOCK CONSOLE LIBRARY.
+  Rose's spec: a fake Big-Picture-style screen where the interface is dead except the
+  play button, and behind it Couchlight runs normally.
+  · The library screen is scenery. Every control except PLAY is inert on purpose, and the
+    caption at the bottom says so. It borrows the idea of a TV game library, not anyone's
+    logo or name.
+  · PLAY opens app/: Couchlight's real renderer (src/, unchanged), built for the web with
+    backups/vite.web-demo.config.mjs in the Couchlight repo. The only non-Couchlight code
+    is ../electron-stub.js, the labelled stand-in for the Electron bridge.
+  · Picking a service shows what the desktop app would do instead of pretending: a web
+    page cannot host Netflix inside itself, so nothing here fakes a stream.
+-->
+<style>
+  :root{
+    --bg0:#0b0d14; --bg1:#141a28; --bg2:#1c2436; --line:rgba(255,255,255,.08);
+    --txt:#e9edf5; --mute:#8a93a8; --play:#4bd26a; --play-2:#2fa84a; --focus:#ffffff;
+    --violet:#b98cff;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html,body{ height:100%; background:var(--bg0); color:var(--txt);
+    font: 15px/1.45 "Segoe UI", "Helvetica Neue", Arial, system-ui, sans-serif; overflow:hidden; }
+  .lib{ position:fixed; inset:0; display:grid; grid-template-rows:auto 1fr auto;
+        background: radial-gradient(1200px 600px at 70% 0%, #22304a 0%, transparent 60%), linear-gradient(#10141f, var(--bg0)); }
+  /* top bar — inert */
+  .top{ display:flex; align-items:center; gap:28px; padding:18px 36px; }
+  .top .nav{ display:flex; gap:26px; font-size:15px; letter-spacing:.02em; color:var(--mute); }
+  .top .nav span{ padding:6px 0; border-bottom:2px solid transparent; }
+  .top .nav span.on{ color:var(--txt); border-color:var(--txt); }
+  .top .sp{ flex:1; }
+  .top .stat{ display:flex; align-items:center; gap:16px; color:var(--mute); font-size:14px; font-variant-numeric: tabular-nums; }
+  .pill{ display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:99px; background:rgba(255,255,255,.06); }
+  .batt{ width:22px; height:11px; border:1.5px solid var(--mute); border-radius:3px; position:relative; }
+  .batt::after{ content:""; position:absolute; inset:1.5px; right:30%; background:var(--mute); border-radius:1px; }
+  /* body: shelf on the left, the game page on the right */
+  .body{ display:grid; grid-template-columns: 230px 1fr; gap:28px; padding:6px 36px 0; min-height:0; }
+  .shelf{ display:flex; flex-direction:column; gap:12px; overflow:hidden; opacity:.55; }
+  .shelf .h{ font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--mute); margin-bottom:2px; }
+  .cap{ height:78px; border-radius:6px; background: linear-gradient(135deg, var(--bg2), #111827); border:1px solid var(--line); }
+  .cap.me{ background: url("app-art/grid_600x900.png") center 30%/cover; border-color: rgba(185,140,255,.55); opacity:1; }
+  .page{ position:relative; min-height:0; border-radius:14px; overflow:hidden; background:#120e1f;
+         display:grid; grid-template-rows: minmax(0, 1fr) auto; box-shadow: 0 30px 80px rgba(0,0,0,.45); }
+  .hero{ position:relative; min-height:180px;
+         background: url("app-art/background_1920x620.jpg") center/cover; }
+  .hero img{ position:absolute; left:50%; top:46%; width:min(46%, 460px); transform:translate(-50%,-50%);
+             filter: drop-shadow(0 12px 40px rgba(170,90,255,.35)); }
+  .hero::after{ content:""; position:absolute; inset:0; background: linear-gradient(transparent 55%, rgba(18,14,31,.95)); }
+  .dock{ display:flex; align-items:center; gap:18px; padding:18px 26px 22px; flex-wrap:wrap; }
+  .play{ display:inline-flex; align-items:center; gap:12px; border:0; cursor:pointer;
+         background: linear-gradient(var(--play), var(--play-2)); color:#fff; font-weight:700;
+         font-size:20px; letter-spacing:.06em; padding:14px 34px 14px 26px; border-radius:6px;
+         box-shadow: 0 8px 24px rgba(75,210,106,.28); transition: transform .12s, filter .12s; }
+  .play:hover{ filter: brightness(1.08); }
+  .play:active{ transform: scale(.98); }
+  .play:focus-visible{ outline: 3px solid var(--focus); outline-offset: 3px; }
+  .play svg{ width:18px; height:18px; }
+  .play[aria-busy="true"]{ filter: saturate(.6); cursor: progress; }
+  .ghost{ width:46px; height:46px; border-radius:6px; background:rgba(255,255,255,.07); display:grid; place-items:center; color:var(--mute); }
+  .facts{ display:flex; gap:26px; margin-left:auto; color:var(--mute); font-size:13px; }
+  .facts b{ display:block; color:var(--txt); font-weight:600; font-size:14px; }
+  .title{ padding:0 26px 4px; font-size:30px; font-weight:700; letter-spacing:.01em; }
+  .title small{ font-size:13px; font-weight:600; letter-spacing:.14em; color:var(--violet); margin-left:10px; vertical-align:4px; }
+  .foot{ display:flex; justify-content:space-between; gap:20px; padding:14px 36px 18px; color:var(--mute); font-size:12.5px; flex-wrap:wrap; }
+  .foot .keys span{ margin-right:16px; }
+  .k{ display:inline-grid; place-items:center; width:20px; height:20px; border-radius:50%; background:rgba(255,255,255,.1); color:var(--txt); font-size:11px; font-weight:700; margin-right:6px; }
+  .k.a{ background:#4bd26a; color:#062; }
+  .inert{ pointer-events:none; user-select:none; }
+
+  /* Couchlight itself, once PLAY is pressed */
+  #run{ position:fixed; inset:0; background:#0f0f1a; opacity:0; visibility:hidden; transition: opacity .45s ease, visibility 0s linear .45s; }
+  #run.on{ opacity:1; visibility:visible; transition: opacity .45s ease; }
+  #run iframe{ width:100%; height:100%; border:0; display:block; }
+  .badge{ position:fixed; left:12px; bottom:10px; z-index:5; pointer-events:none;
+          font: 600 10.5px/1 "Segoe UI", Arial, sans-serif; letter-spacing:.14em; text-transform:uppercase;
+          color: rgba(255,255,255,.62); background: rgba(10,8,20,.72); border:1px solid rgba(185,140,255,.35);
+          padding:6px 9px; border-radius:99px; }
+  /* the honest card: what the desktop app would do now */
+  #card{ position:fixed; inset:0; z-index:10; display:grid; place-items:center; background: rgba(6,5,12,.62);
+         backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); padding:16px; }
+  #card[hidden]{ display:none; }
+  #card .box{ width:min(520px, 100%); background:#171226; border:1px solid rgba(185,140,255,.35); border-radius:16px;
+              padding:24px 24px 20px; box-shadow: 0 30px 80px rgba(0,0,0,.55); }
+  #card .lab{ font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--violet); margin-bottom:8px; }
+  #card h2{ font-size:22px; margin-bottom:10px; }
+  #card p{ color:#c9cfdd; margin-bottom:10px; }
+  #card p.pending{ color:#f0c27a; }
+  #card .row{ display:flex; gap:12px; flex-wrap:wrap; margin-top:16px; }
+  #card button, #card a{ font: 600 14px/1 "Segoe UI", Arial, sans-serif; padding:12px 16px; border-radius:8px; cursor:pointer; text-decoration:none; }
+  #card .go{ background:#9b6bff; color:#fff; border:0; }
+  #card .back{ background:transparent; color:#e9edf5; border:1px solid rgba(255,255,255,.2); }
+  #card button:focus-visible, #card a:focus-visible{ outline:3px solid #fff; outline-offset:2px; }
+
+  @media (max-width: 760px){
+    .top{ padding:12px 16px; gap:14px; }
+    .top .nav span:not(.on){ display:none; }
+    .top .stat .pill:first-child{ display:none; }
+    .body{ grid-template-columns: 1fr; padding:4px 16px 0; }
+    .shelf{ display:none; }
+    .title{ font-size:24px; padding:0 18px 2px; }
+    .dock{ padding:14px 18px 18px; gap:12px; }
+    .play{ flex:1 1 auto; justify-content:center; }
+    .facts{ margin-left:0; width:100%; gap:18px; }
+    .foot{ padding:10px 16px 14px; }
+    .foot .keys{ display:none; }
+  }
+  /* on a phone the label gets its own strip under the app instead of sitting on its footer */
+  @media (max-width: 760px){
+    #run iframe{ height: calc(100% - 26px); }
+    .badge{ left:0; right:0; bottom:0; border-radius:0; border-width:1px 0 0; text-align:center; padding:7px 0; }
+  }
+  @media (prefers-reduced-motion: reduce){ #run, .play{ transition:none; } }
+</style>
+</head>
+<body>
+
+<div class="lib" id="lib">
+  <div class="top inert" aria-hidden="true">
+    <div class="nav"><span>Home</span><span class="on">Library</span><span>Store</span><span>Friends</span><span>Search</span></div>
+    <div class="sp"></div>
+    <div class="stat"><span class="pill">Downloads: none</span><span class="pill"><span class="batt"></span> Controller</span><span id="clock">9:41</span></div>
+  </div>
+
+  <div class="body">
+    <div class="shelf inert" aria-hidden="true">
+      <div class="h">Recent</div>
+      <div class="cap me"></div><div class="cap"></div><div class="cap"></div><div class="cap"></div><div class="cap"></div><div class="cap"></div>
+    </div>
+    <div class="page">
+      <div class="hero inert" aria-hidden="true"><img src="app-art/logo_1280x720.png" alt=""></div>
+      <div>
+        <div class="title">Couchlight <small>0.9 BETA</small></div>
+        <div class="dock">
+          <button class="play" id="play" type="button" autofocus>
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5z"/></svg>
+            <span id="playTxt">PLAY</span>
+          </button>
+          <span class="ghost inert" aria-hidden="true">&#9881;</span>
+          <span class="ghost inert" aria-hidden="true">&#9432;</span>
+          <div class="facts inert" aria-hidden="true">
+            <div>Last played<b>Today</b></div>
+            <div>Controller<b>Full support</b></div>
+            <div>Version<b>0.9 beta</b></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span>A mock game library for this demo. Only <b>Play</b> works; everything else is scenery.</span>
+    <span class="keys inert" aria-hidden="true"><span><span class="k a">A</span>Play</span><span><span class="k">B</span>Back</span><span><span class="k">&#9776;</span>Menu</span></span>
+  </div>
+</div>
+
+<div id="run" aria-hidden="true">
+  <iframe id="app" title="Couchlight" src="about:blank" allow="fullscreen; gamepad"></iframe>
+  <span class="badge">Couchlight 0.9 beta &middot; web demo</span>
+</div>
+
+<div id="card" hidden role="dialog" aria-modal="true" aria-labelledby="cardTitle">
+  <div class="box">
+    <div class="lab">Web demo stops here</div>
+    <h2 id="cardTitle">Opening <span id="cName">it</span></h2>
+    <p>On a TV, Couchlight opens <b id="cName2">it</b> right here, inside its own window, so the controller keeps
+       driving it: the left stick moves a pointer, A clicks, B goes back, Start comes home.</p>
+    <p>A web page can&rsquo;t host another site that way, so nothing plays in this demo, and nothing pretends to.</p>
+    <p class="pending" id="cPending" hidden>In the 0.9 beta this one is also still waiting on DRM signing, which is why its tile is greyed.</p>
+    <div class="row">
+      <a class="go" id="cGo" href="#" target="_blank" rel="noopener">Open <span id="cName3">it</span> in a new tab &#8599;</a>
+      <button class="back" id="cBack" type="button">Back to Couchlight</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var lib = document.getElementById('lib'), run = document.getElementById('run'), app = document.getElementById('app');
+  var play = document.getElementById('play'), playTxt = document.getElementById('playTxt');
+  var card = document.getElementById('card');
+
+  function clock() {
+    var d = new Date(), h = d.getHours() % 12 || 12, m = ('0' + d.getMinutes()).slice(-2);
+    document.getElementById('clock').textContent = h + ':' + m;
+  }
+  clock(); setInterval(clock, 30000);
+
+  var running = false;
+  function launch() {
+    if (running) return;
+    running = true;
+    play.setAttribute('aria-busy', 'true'); playTxt.textContent = 'LAUNCHING…';
+    if (app.src.indexOf('app/index.html') < 0) app.src = 'app/index.html';
+    setTimeout(function () {
+      run.classList.add('on'); run.setAttribute('aria-hidden', 'false');
+      lib.setAttribute('aria-hidden', 'true');
+      try { app.focus(); app.contentWindow && app.contentWindow.focus(); } catch (e) {}
+    }, 900);
+  }
+  function exitToLibrary() {
+    closeCard();
+    run.classList.remove('on'); run.setAttribute('aria-hidden', 'true');
+    lib.removeAttribute('aria-hidden');
+    running = false; play.removeAttribute('aria-busy'); playTxt.textContent = 'PLAY';
+    play.focus();
+  }
+  play.addEventListener('click', launch);
+
+  // A on a controller presses PLAY, as it would on a TV (only while the library shows).
+  var wasDown = false;
+  function poll() {
+    var pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    var down = false;
+    for (var i = 0; i < pads.length; i++) if (pads[i] && pads[i].buttons[0] && pads[i].buttons[0].pressed) down = true;
+    if (down && !wasDown && !running && card.hidden) launch();
+    wasDown = down;
+    requestAnimationFrame(poll);
+  }
+  if (navigator.getGamepads) requestAnimationFrame(poll);
+
+  function openCard(m) {
+    ['cName', 'cName2', 'cName3'].forEach(function (id) { document.getElementById(id).textContent = m.name; });
+    document.getElementById('cGo').href = m.url;
+    document.getElementById('cPending').hidden = !m.pending;
+    card.hidden = false;
+    document.getElementById('cBack').focus();
+  }
+  function closeCard() {
+    if (card.hidden) return;
+    card.hidden = true;
+    try { app.contentWindow.focus(); } catch (e) {}
+  }
+  document.getElementById('cBack').addEventListener('click', closeCard);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !card.hidden) closeCard(); });
+
+  window.addEventListener('message', function (e) {
+    if (e.source !== app.contentWindow || !e.data || typeof e.data !== 'object') return;
+    if (e.data.type === 'couchlight-launch') openCard(e.data);
+    else if (e.data.type === 'couchlight-exit') exitToLibrary();
+    else if (e.data.type === 'couchlight-fullscreen') {
+      var d = document;
+      if (d.fullscreenElement) d.exitFullscreen && d.exitFullscreen();
+      else d.documentElement.requestFullscreen && d.documentElement.requestFullscreen().catch(function () {});
+    }
+  });
+})();
+</script>
+</body>
+</html>

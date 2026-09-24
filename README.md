@@ -1,114 +1,37 @@
-# Rose Davison - Portfolio Website
+# rose.davison — personal site v2
 
-A clean, professional portfolio showcasing mechanical engineering projects with a focus on robotics, exoskeletons, and embedded systems.
+Rebuilt from scratch on 2026-09-23. **Not deployed and not pushed.** The live site
+(rose-bot47.github.io) and the old local folder `Rose'sPortfolio` are untouched.
 
-## 🚀 Quick Start - GitHub Pages Hosting
+## What it is
+- A brutalist terminal page (the rain, the CRT, the amethyst block wordmark, one block
+  per screen) with three cinematic star planes behind the rain, and Swiss rules for the
+  images (12-column plates, figure numbers, hairlines) and every clickable thing
+  (Helvetica, hard rectangles, one amber accent).
+- **Run**: three real sites that open full screen *inside* the page (`#/app/surge`,
+  `#/app/starfinder`, `#/app/iris`) with a bar to get back and a new-tab link. Browser
+  Back closes them.
+- **Coming soon**: SAGE Memory MCP plus the five launch-campaign drafts (labelled as
+  drafts, not running).
+- **Hardware**: exoskeletons, competition robots, embedded trackers and skills. The
+  wording is the existing portfolio's, kept verbatim.
+- A small shell at the bottom (`help`, `ls hardware`, `man exoskeleton`, `open surge`).
 
-### Option 1: Using GitHub's Web Interface (Easiest)
+## Where the apps come from
+| Path | Source |
+|---|---|
+| `apps/surge/` | copy of `Documents/Code/Surge` (index + how-it-works), 2026-09-23 |
+| `apps/starfinder/` | `github.com/rose-bot47/StarFinder` at commit `1b7f263`, Apache-2.0 (LICENSE kept) |
+| `apps/iris-demo/` | the Iris desktop viewer's real HTML/CSS with a demo script; feeds are drawn in the browser and labelled "simulated" |
 
-1. **Create Repository**
-   - Go to [github.com/new](https://github.com/new)
-   - Name it `yourusername.github.io` (replace with your actual username)
-   - Keep it public
-   - Don't initialize with README (we have files already)
-   - Click "Create repository"
+If Surge changes, re-copy its two HTML files into `apps/surge/`.
 
-2. **Upload Files**
-   - Click "uploading an existing file"
-   - Drag and drop ALL files from this folder (including the `images` folder)
-   - Commit directly to main branch
+## Run locally
+`python -m http.server 8778` in this folder, then open http://127.0.0.1:8778/.
+(The apps make live requests to map and elevation services, so serve it over http rather
+than opening the file directly.)
 
-3. **Enable GitHub Pages**
-   - Go to Settings → Pages
-   - Source: Deploy from a branch
-   - Branch: main, / (root)
-   - Save
-
-4. **Done!** Your site will be live at `https://yourusername.github.io` within a few minutes.
-
-### Option 2: Using Git Command Line
-
-```bash
-# Navigate to this folder
-cd portfolio
-
-# Initialize git repo
-git init
-git add .
-git commit -m "Initial portfolio upload"
-
-# Add your GitHub remote (replace USERNAME)
-git remote add origin https://github.com/USERNAME/USERNAME.github.io.git
-
-# Push to GitHub
-git branch -M main
-git push -u origin main
-```
-
-Then enable GitHub Pages in repository Settings → Pages.
-
----
-
-## ✏️ Customization Checklist
-
-Before deploying, update these items in `index.html`:
-
-### Contact Links (search for "yourusername")
-- [ ] GitHub URL: `https://github.com/yourusername`
-- [ ] LinkedIn URL: `https://linkedin.com/in/yourusername`
-- [ ] Email address: `your.email@example.com`
-
-### Optional Customizations
-- Update project descriptions if needed
-- Add/remove projects
-- Modify colors in `styles.css` (`:root` section)
-
----
-
-## 📁 File Structure
-
-```
-portfolio/
-├── index.html          # Main HTML file
-├── styles.css          # All styling
-├── script.js           # Smooth scroll & animations
-├── README.md           # This file
-└── images/
-    ├── profile.png     # Your headshot
-    ├── exo-linear.jpg  # Linear actuator exoskeleton
-    ├── exo-cable.jpg   # Cable-driven prototype
-    ├── exo-passive.jpg # Wearable leg brace
-    ├── exo-arm.jpg     # Articulated arm linkage
-    ├── robot-vex.jpg   # VEX Robot #104
-    ├── robot-gear.jpg  # Custom gear robot
-    ├── robot-259.jpg   # Robot #259
-    ├── tracker-case.jpg    # IMU tracker enclosure
-    └── tracker-internals.jpg # Tracker electronics
-```
-
----
-
-## 🎨 Design Notes
-
-- **Typography**: Instrument Serif (display) + DM Sans (body)
-- **Color Palette**: Deep blue-black background with blue accent (#3b82f6)
-- **Mobile Responsive**: Tested down to 320px width
-- **Performance**: Pure CSS animations, no frameworks required
-
----
-
-## 📝 Adding to Job Applications
-
-When linking your portfolio:
-- **Full URL**: `https://yourusername.github.io`
-- **Shortened**: Consider using a link shortener or custom domain
-
-For the Apptronik application field "Please provide a portfolio or Github":
-```
-Portfolio: https://yourusername.github.io
-GitHub: https://github.com/yourusername
-```
-
----
-
-Built with 💜 for the future of robotics.
+## Privacy
+SAGE is described generically. No family or personal memory content appears anywhere.
+One campaign poster (the local-first one) was left out because its artwork shows real
+memory text; that card is copy-only.

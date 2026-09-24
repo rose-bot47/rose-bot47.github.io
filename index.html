@@ -1,643 +1,341 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rose Davison | Engineer &amp; Software Builder</title>
-    <meta name="description" content="Rose Davison — mechanical engineer and software builder. Wearable robotics and actuation systems, plus AI infrastructure, developer tooling, and applications.">
-    <meta name="author" content="Rose Davison">
-    <meta property="og:title" content="Rose Davison | Engineer &amp; Software Builder">
-    <meta property="og:description" content="Wearable robotics and actuation systems, plus AI memory infrastructure, developer tooling, and shipped software products.">
-    <meta property="og:type" content="website">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rose Davison | Engineer &amp; Software Builder</title>
+<meta name="description" content="Rose Davison: mechanical engineer and software builder. Wearable robotics and actuation systems, plus AI infrastructure, developer tooling, and applications you can run right here.">
+<meta name="author" content="Rose Davison">
+<meta property="og:title" content="Rose Davison | Engineer &amp; Software Builder">
+<meta property="og:description" content="Wearable robotics and actuation systems, plus shipped software you can open and run inside the page.">
+<meta property="og:type" content="website">
+<link rel="stylesheet" href="site.css">
 </head>
 <body>
-    <!-- Geometric background elements -->
-    <div class="bg-grid"></div>
 
-    <!-- Navigation -->
-    <nav class="nav">
-        <div class="nav-content">
-            <a href="#" class="nav-logo">RD</a>
-            <div class="nav-links">
-                <a href="#software">Software</a>
-                <a href="#hardware">Hardware</a>
-                <a href="#skills">Skills</a>
-                <a href="#contact">Contact</a>
-            </div>
-        </div>
-    </nav>
+<a class="skip" href="#run">skip to content</a>
+<div class="sky" id="sky" aria-hidden="true"></div>
+<div class="matrix" id="matrix" aria-hidden="true"></div>
+<div class="crt" aria-hidden="true"></div>
 
-    <!-- Hero Section -->
-    <header class="hero">
-        <div class="hero-content">
-            <div class="hero-text">
-                <p class="hero-tagline">Mechanical Engineer &middot; Software &amp; Systems</p>
-                <h1 class="hero-title">Rose Davison</h1>
-                <p class="hero-description">
-                    Mechanical engineer and self-taught software builder. I design wearable robotics
-                    and actuation systems, and build the AI memory infrastructure, developer tooling,
-                    and applications behind <span class="hero-highlight">Wizard Industries</span> &mdash;
-                    bridging physical hardware with the systems that drive it.
-                </p>
-                <div class="hero-cta">
-                    <a href="#software" class="btn btn-primary">View Work</a>
-                    <a href="#contact" class="btn btn-secondary">Get in Touch</a>
-                </div>
-            </div>
-            <div class="hero-image">
-                <div class="hero-image-frame">
-                    <img src="images/profile.png" alt="Rose Davison">
-                </div>
-                <div class="hero-image-accent"></div>
-            </div>
-        </div>
-    </header>
+<nav class="sysline ui" aria-label="sections">
+  <span class="id"><i aria-hidden="true"></i>rose.davison <span class="hide-sm" style="color:var(--fg-3);font-weight:400">/ engineering &amp; software</span></span>
+  <a href="#top"><span>00</span>Boot</a>
+  <a href="#run"><span>01</span>Run</a>
+  <a href="#software"><span>02</span>Software</a>
+  <a href="#soon"><span>03</span>Soon</a>
+  <a href="#hardware"><span>04</span>Hardware</a>
+  <a href="#contact"><span>05</span>Contact</a>
+</nav>
 
-    <!-- ============================= -->
-    <!-- SOFTWARE SECTION -->
-    <!-- ============================= -->
-    <section id="software" class="software">
-        <div class="section-header">
-            <p class="section-label">Software &amp; AI Systems</p>
-            <h2 class="section-title">Software</h2>
-            <p class="section-intro">
-                Full-stack applications, AI infrastructure, and developer tooling &mdash; from a
-                shipped consumer product to the memory systems and MCP tool suite that power
-                Wizard Industries.
-            </p>
-        </div>
-
-        <!-- Flagship / Coming Soon -->
-        <div class="project-category">
-            <h3 class="category-title">Flagship</h3>
-            <div class="project-grid">
-                <article class="software-card software-card-featured">
-                    <div class="software-card-head">
-                        <div class="software-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                <path d="M12 2a4 4 0 0 0-4 4 3.5 3.5 0 0 0-2 6.3A3.5 3.5 0 0 0 8 19a4 4 0 0 0 4 1"/>
-                                <path d="M12 2a4 4 0 0 1 4 4 3.5 3.5 0 0 1 2 6.3A3.5 3.5 0 0 1 16 19a4 4 0 0 1-4 1"/>
-                                <path d="M12 6v14"/>
-                            </svg>
-                        </div>
-                        <span class="status-badge status-soon">Coming Soon</span>
-                    </div>
-                    <div class="software-info">
-                        <h4>SAGE Memory <span class="mono">MCP</span></h4>
-                        <p>
-                            Persistent memory and identity infrastructure for AI agents. A Model Context
-                            Protocol server that gives large language models continuous, versioned,
-                            long-term memory across sessions &mdash; loading a full narrative history rather
-                            than isolated retrieval fragments. The core of Wizard Industries' consciousness-
-                            persistence platform.
-                        </p>
-                        <ul class="project-tags">
-                            <li>Model Context Protocol</li>
-                            <li>Node.js</li>
-                            <li>Long-Term Memory</li>
-                            <li>LLM Agents</li>
-                        </ul>
-                    </div>
-                </article>
-            </div>
-        </div>
-
-        <!-- Released & Open Source -->
-        <div class="project-category">
-            <h3 class="category-title">Released &amp; Open Source</h3>
-            <p class="category-description">
-                Shipped products and public repositories.
-            </p>
-
-            <div class="project-grid">
-                <article class="software-card">
-                    <div class="software-card-head">
-                        <div class="software-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                <rect x="2" y="3" width="20" height="14" rx="2"/>
-                                <path d="M8 21h8m-4-4v4"/>
-                                <path d="M10 8l4 2-4 2z" fill="currentColor" stroke="none"/>
-                            </svg>
-                        </div>
-                        <span class="status-badge status-released">Released</span>
-                    </div>
-                    <div class="software-info">
-                        <h4>SteamStreamer</h4>
-                        <p>
-                            A unified streaming-service launcher built for Steam Big Picture and HTPC
-                            setups &mdash; one clean, controller-friendly dashboard for every streaming
-                            app. Electron desktop app, packaged and shipped.
-                        </p>
-                        <ul class="project-tags">
-                            <li>Electron</li>
-                            <li>JavaScript</li>
-                            <li>Desktop App</li>
-                        </ul>
-                        <a href="https://rosebot.gumroad.com/l/SteamStreamer" class="software-link" target="_blank" rel="noopener">
-                            Get it on Gumroad
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M7 7h10v10"/></svg>
-                        </a>
-                    </div>
-                </article>
-
-                <article class="software-card">
-                    <div class="software-card-head">
-                        <div class="software-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                <path d="M9 3L3 6v15l6-3 6 3 6-3V3l-6 3-6-3z"/>
-                                <path d="M9 3v15m6-12v15"/>
-                            </svg>
-                        </div>
-                        <span class="status-badge status-oss">Open Source</span>
-                    </div>
-                    <div class="software-info">
-                        <h4>StarFinder</h4>
-                        <p>
-                            An interactive map of every US State and National Park, overlaid with
-                            light-pollution and mobile-network-coverage data &mdash; a trip-planning tool
-                            for stargazing and off-grid remote work.
-                        </p>
-                        <ul class="project-tags">
-                            <li>Web App</li>
-                            <li>Mapping / GIS</li>
-                            <li>Apache-2.0</li>
-                        </ul>
-                        <a href="https://github.com/rose-bot47/StarFinder" class="software-link" target="_blank" rel="noopener">
-                            View on GitHub
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M7 7h10v10"/></svg>
-                        </a>
-                    </div>
-                </article>
-
-                <article class="software-card">
-                    <div class="software-card-head">
-                        <div class="software-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                <path d="M12 2l9 5v10l-9 5-9-5V7l9-5z"/>
-                                <path d="M12 12l9-5m-9 5v10m0-10L3 7"/>
-                            </svg>
-                        </div>
-                        <span class="status-badge status-oss">Open Source</span>
-                    </div>
-                    <div class="software-info">
-                        <h4>AnyFactory</h4>
-                        <p>
-                            A 3D-printing operating system with automated part ejection &mdash; enabling
-                            continuous, lights-out production runs by clearing each finished print and
-                            starting the next without an operator.
-                        </p>
-                        <ul class="project-tags">
-                            <li>Firmware / G-code</li>
-                            <li>Additive Manufacturing</li>
-                            <li>MIT</li>
-                        </ul>
-                        <a href="https://github.com/rose-bot47/AnyFactory" class="software-link" target="_blank" rel="noopener">
-                            View on GitHub
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M7 7h10v10"/></svg>
-                        </a>
-                    </div>
-                </article>
-            </div>
-        </div>
-
-        <!-- In Development -->
-        <div class="project-category">
-            <h3 class="category-title">In Development</h3>
-            <p class="category-description">
-                The Wizard Industries tool suite &mdash; a family of Model Context Protocol servers and
-                applications that give AI agents new senses and capabilities.
-            </p>
-
-            <div class="project-grid project-grid-small">
-                <article class="software-card software-card-compact">
-                    <div class="software-card-head">
-                        <div class="software-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                <rect x="2" y="3" width="20" height="14" rx="2"/>
-                                <path d="M8 21h8M12 17v4M6 8h.01M6 12h6"/>
-                            </svg>
-                        </div>
-                        <span class="status-badge status-dev">In Dev</span>
-                    </div>
-                    <div class="software-info">
-                        <h4>SAGE Desktop</h4>
-                        <p>
-                            A cross-platform desktop app (Electron + React) bundling the SAGE tool suite
-                            with local-model orchestration and one-click setup.
-                        </p>
-                        <ul class="project-tags">
-                            <li>Electron</li>
-                            <li>React</li>
-                        </ul>
-                    </div>
-                </article>
-
-                <article class="software-card software-card-compact">
-                    <div class="software-card-head">
-                        <div class="software-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                <path d="M3 12h2l2-6 3 15 3-12 2 5h6"/>
-                            </svg>
-                        </div>
-                        <span class="status-badge status-dev">In Dev</span>
-                    </div>
-                    <div class="software-info">
-                        <h4>Dialogue <span class="mono">MCP</span></h4>
-                        <p>
-                            A real-time voice pipeline &mdash; text-to-speech, speech-to-text, and speaker
-                            identification &mdash; giving AI agents natural spoken conversation.
-                        </p>
-                        <ul class="project-tags">
-                            <li>Audio ML</li>
-                            <li>Python</li>
-                        </ul>
-                    </div>
-                </article>
-
-                <article class="software-card software-card-compact">
-                    <div class="software-card-head">
-                        <div class="software-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                <rect x="2" y="4" width="20" height="16" rx="2"/>
-                                <path d="M2 8h20M6 4v4M10 4v4M14 4v4M18 4v4"/>
-                            </svg>
-                        </div>
-                        <span class="status-badge status-dev">In Dev</span>
-                    </div>
-                    <div class="software-info">
-                        <h4>Studio <span class="mono">MCP</span></h4>
-                        <p>
-                            Generative-media and video-editing automation &mdash; programmatic control of
-                            an editing pipeline plus image and 3D-asset generation.
-                        </p>
-                        <ul class="project-tags">
-                            <li>Media Automation</li>
-                            <li>Generative AI</li>
-                        </ul>
-                    </div>
-                </article>
-
-                <article class="software-card software-card-compact">
-                    <div class="software-card-head">
-                        <div class="software-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                <path d="M4 4l7 16 2-7 7-2z"/>
-                            </svg>
-                        </div>
-                        <span class="status-badge status-dev">In Dev</span>
-                    </div>
-                    <div class="software-info">
-                        <h4>SystemControl <span class="mono">MCP</span></h4>
-                        <p>
-                            Desktop and GUI automation &mdash; mouse, keyboard, and screen-vision control
-                            that lets an AI agent operate a computer directly.
-                        </p>
-                        <ul class="project-tags">
-                            <li>Automation</li>
-                            <li>Computer Vision</li>
-                        </ul>
-                    </div>
-                </article>
-            </div>
-        </div>
-    </section>
-
-    <!-- ============================= -->
-    <!-- HARDWARE SECTION -->
-    <!-- ============================= -->
-    <section id="hardware" class="hardware">
-        <div class="section-header">
-            <p class="section-label">Mechanical Engineering</p>
-            <h2 class="section-title">Hardware</h2>
-            <p class="section-intro">
-                Wearable robotics, competition machines, and embedded devices &mdash; 8+ years of
-                hands-on mechanical design bridging physical hardware with embedded systems.
-            </p>
-        </div>
-
-        <!-- Exoskeleton Projects -->
-        <div class="project-category">
-            <h3 class="category-title">Exoskeleton Development</h3>
-            <p class="category-description">
-                Multiple iterations of lower-limb exoskeletons exploring linear actuation,
-                cable-driven mechanisms, and wearable ergonomics.
-            </p>
-
-            <div class="project-grid">
-                <article class="project-card project-card-featured">
-                    <div class="project-image">
-                        <img src="images/exo-arm.jpg" alt="Linear Actuator Exoskeleton">
-                    </div>
-                    <div class="project-info">
-                        <h4>Linear Actuator Exoskeleton</h4>
-                        <p>Exoskeleton linkage driven by a custom lead-screw linear actuator, with color-coded
-                           3D printed linkages and aluminum structural members. Built for kinematic analysis
-                           and assisted-locomotion research.</p>
-                        <ul class="project-tags">
-                            <li>Linear Actuation</li>
-                            <li>Wearable Robotics</li>
-                            <li>CAD/FEA</li>
-                        </ul>
-                    </div>
-                </article>
-
-                <article class="project-card">
-                    <div class="project-image">
-                        <img src="images/exo-cable.jpg" alt="Cable-Driven Exoskeleton">
-                    </div>
-                    <div class="project-info">
-                        <h4>Cable-Driven Prototype</h4>
-                        <p>Early-stage prototype exploring cable/pulley actuation with benchtop power supply for rapid iteration.</p>
-                        <ul class="project-tags">
-                            <li>Cable Drive</li>
-                            <li>Rapid Prototyping</li>
-                        </ul>
-                    </div>
-                </article>
-
-                <article class="project-card">
-                    <div class="project-image">
-                        <img src="images/exo-passive.jpg" alt="Passive Leg Brace">
-                    </div>
-                    <div class="project-info">
-                        <h4>Wearable Leg Brace</h4>
-                        <p>Lightweight aluminum and 3D printed construction for testing ergonomic fit and joint alignment.</p>
-                        <ul class="project-tags">
-                            <li>Ergonomics</li>
-                            <li>3D Printing</li>
-                        </ul>
-                    </div>
-                </article>
-
-                <article class="project-card">
-                    <div class="project-image">
-                        <img src="images/exo-linear.jpg" alt="Strings-Driven Prototyping">
-                    </div>
-                    <div class="project-info">
-                        <h4>Strings-Driven Prototyping</h4>
-                        <p>Body-worn lower-limb prototype exploring a strings-driven actuation approach, with a
-                           triangular mounting bracket, strapped aluminum members, and 3D printed joint interfaces.</p>
-                        <ul class="project-tags">
-                            <li>Wearable Robotics</li>
-                            <li>Rapid Prototyping</li>
-                        </ul>
-                    </div>
-                </article>
-            </div>
-        </div>
-
-        <!-- Competition Robotics -->
-        <div class="project-category">
-            <h3 class="category-title">Competition Robotics</h3>
-            <p class="category-description">
-                Years of hands-on experience designing, building, and competing with custom robots
-                in high-pressure tournament environments.
-            </p>
-
-            <div class="project-grid">
-                <article class="project-card">
-                    <div class="project-image">
-                        <img src="images/robot-vex.jpg" alt="SkillsUSA Bomb-Defusal Robot 104">
-                    </div>
-                    <div class="project-info">
-                        <h4>SkillsUSA Bomb-Defusal Robot</h4>
-                        <p>Competition robot featuring mecanum wheels for omnidirectional movement, chain-driven lift mechanism,
-                           and custom manipulator end-effector.</p>
-                        <ul class="project-tags">
-                            <li>Mecanum Drive</li>
-                            <li>Chain Transmission</li>
-                        </ul>
-                    </div>
-                </article>
-
-                <article class="project-card">
-                    <div class="project-image">
-                        <img src="images/robot-gear.jpg" alt="Gear-Driven Robot">
-                    </div>
-                    <div class="project-info">
-                        <h4>Custom Gear Robot</h4>
-                        <p>Large-scale robot with laser-cut wooden gear wheels and PVC structural frame.
-                           Extended reach arm with articulated gripper.</p>
-                        <ul class="project-tags">
-                            <li>Gear Design</li>
-                            <li>Laser Cutting</li>
-                        </ul>
-                    </div>
-                </article>
-
-                <article class="project-card">
-                    <div class="project-image">
-                        <img src="images/robot-259.jpg" alt="Robot 259">
-                    </div>
-                    <div class="project-info">
-                        <h4>Robot #259</h4>
-                        <p>Compact competition robot with high-traction custom wheels, servo-driven arm,
-                           and low center of gravity for stability.</p>
-                        <ul class="project-tags">
-                            <li>Drivetrain Design</li>
-                            <li>Servo Control</li>
-                        </ul>
-                    </div>
-                </article>
-            </div>
-        </div>
-
-        <!-- Electronics Projects -->
-        <div class="project-category">
-            <h3 class="category-title">Embedded Systems</h3>
-            <p class="category-description">
-                IoT devices and sensor systems bridging mechanical hardware with embedded electronics.
-            </p>
-
-            <div class="project-grid project-grid-small">
-                <article class="project-card project-card-compact">
-                    <div class="project-image">
-                        <img src="images/tracker-case.jpg" alt="IMU Tracker Enclosure">
-                    </div>
-                    <div class="project-info">
-                        <h4>IMU Motion Tracker</h4>
-                        <p>Custom 3D printed enclosure with ESP8266, IMU sensor, and integrated status LEDs for motion capture applications.</p>
-                        <ul class="project-tags">
-                            <li>ESP8266</li>
-                            <li>IMU</li>
-                            <li>3D Printed</li>
-                        </ul>
-                    </div>
-                </article>
-
-                <article class="project-card project-card-compact">
-                    <div class="project-image">
-                        <img src="images/tracker-internals.jpg" alt="Tracker Electronics">
-                    </div>
-                    <div class="project-info">
-                        <h4>Tracker Internals</h4>
-                        <p>Compact electronics packaging with NodeMCU, battery management, and hand-soldered connections.</p>
-                        <ul class="project-tags">
-                            <li>PCB Layout</li>
-                            <li>Soldering</li>
-                        </ul>
-                    </div>
-                </article>
-            </div>
-        </div>
-    </section>
-
-    <!-- Skills Section -->
-    <section id="skills" class="skills">
-        <div class="section-header">
-            <p class="section-label">Capabilities</p>
-            <h2 class="section-title">Technical Skills</h2>
-        </div>
-
-        <div class="skills-grid">
-            <div class="skill-category">
-                <div class="skill-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                        <path d="M2 17l10 5 10-5"/>
-                        <path d="M2 12l10 5 10-5"/>
-                    </svg>
-                </div>
-                <h3>Mechanical Design</h3>
-                <ul>
-                    <li>SolidWorks / Fusion 360</li>
-                    <li>GD&amp;T and Technical Drawing</li>
-                    <li>FEA Simulation</li>
-                    <li>DFM / DFMA Principles</li>
-                    <li>Mechanism &amp; Linkage Design</li>
-                </ul>
-            </div>
-
-            <div class="skill-category">
-                <div class="skill-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <circle cx="12" cy="12" r="3"/>
-                        <path d="M12 1v4m0 14v4M1 12h4m14 0h4"/>
-                        <path d="M4.22 4.22l2.83 2.83m9.9 9.9l2.83 2.83m0-15.56l-2.83 2.83m-9.9 9.9l-2.83 2.83"/>
-                    </svg>
-                </div>
-                <h3>Actuation Systems</h3>
-                <ul>
-                    <li>Electric Motor Selection</li>
-                    <li>Linear Actuator Design</li>
-                    <li>Planetary Gear Systems</li>
-                    <li>Cable/Pulley Mechanisms</li>
-                    <li>Drivetrain Architecture</li>
-                </ul>
-            </div>
-
-            <div class="skill-category">
-                <div class="skill-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <rect x="4" y="4" width="16" height="16" rx="2"/>
-                        <path d="M9 9h6v6H9z"/>
-                        <path d="M9 2v2m6-2v2M9 20v2m6-2v2M2 9h2m0 6H2m20-6h-2m2 6h-2"/>
-                    </svg>
-                </div>
-                <h3>Prototyping</h3>
-                <ul>
-                    <li>FDM / SLA 3D Printing</li>
-                    <li>Laser Cutting</li>
-                    <li>Manual Machining</li>
-                    <li>Through-hole &amp; SMD Soldering</li>
-                    <li>Rapid Iteration Methods</li>
-                </ul>
-            </div>
-
-            <div class="skill-category">
-                <div class="skill-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <path d="M16 18l6-6-6-6"/>
-                        <path d="M8 6l-6 6 6 6"/>
-                        <path d="M14.5 4l-5 16"/>
-                    </svg>
-                </div>
-                <h3>Software &amp; AI Systems</h3>
-                <ul>
-                    <li>Python / JavaScript / C</li>
-                    <li>Electron / React / Node.js</li>
-                    <li>LLM Agents &amp; MCP Servers</li>
-                    <li>Deep Learning / PyTorch</li>
-                    <li>REST APIs &amp; Full-Stack</li>
-                </ul>
-            </div>
-
-            <div class="skill-category">
-                <div class="skill-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <rect x="9" y="2" width="6" height="11" rx="3"/>
-                        <path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8"/>
-                    </svg>
-                </div>
-                <h3>Embedded &amp; Firmware</h3>
-                <ul>
-                    <li>Arduino / ESP8266 / ESP32</li>
-                    <li>RepRap / Klipper / Marlin</li>
-                    <li>Motor Control Systems</li>
-                    <li>Sensor Integration (IMU)</li>
-                    <li>Linux / Terminal / Git</li>
-                </ul>
-            </div>
-        </div>
-    </section>
-
-    <!-- Contact Section -->
-    <section id="contact" class="contact">
-        <div class="contact-content">
-            <div class="section-header">
-                <p class="section-label">Let's Connect</p>
-                <h2 class="section-title">Get in Touch</h2>
-            </div>
-            <p class="contact-description">
-                Open to opportunities and collaboration across robotics, actuation, and software.
-                Let's talk about what we could build together.
-            </p>
-            <div class="contact-links">
-                <a href="https://github.com/rose-bot47" class="contact-link" target="_blank" rel="noopener">
-                    <svg viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-                    </svg>
-                    GitHub
-                </a>
-                <a href="https://www.linkedin.com/in/rose-davison/" class="contact-link" target="_blank" rel="noopener">
-                    <svg viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-                    </svg>
-                    LinkedIn
-                </a>
-                <a href="mailto:rosedavison47@gmail.com" class="contact-link" onclick="navigator.clipboard.writeText('rosedavison47@gmail.com'); this.setAttribute('title', 'Copied!'); setTimeout(() => this.removeAttribute('title'), 2000);">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                        <path d="M22 6l-10 7L2 6"/>
-                    </svg>
-                    rosedavison47@gmail.com
-                </a>
-            </div>
-        </div>
-    </section>
-
-    <!-- Footer -->
-    <footer class="footer">
-        <p>&copy; 2026 Rose Davison &middot; Engineering &amp; Software</p>
-    </footer>
-
-    <!-- Image Lightbox -->
-    <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Expanded image view" hidden>
-        <button class="lightbox-close" type="button" aria-label="Close image view">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path d="M6 6l12 12M18 6L6 18"/>
-            </svg>
-        </button>
-        <figure class="lightbox-figure">
-            <img class="lightbox-img" src="" alt="">
-            <figcaption class="lightbox-caption"></figcaption>
-        </figure>
+<!-- 00. boot: the wordmark, the name, the portrait -->
+<section class="screen" id="top">
+  <div class="blk grid12">
+    <div class="hero-txt">
+      <p class="boot">
+        <span class="ok">[  ok  ]</span> mounting /workshop<br>
+        <span class="ok">[  ok  ]</span> loading exoskeletons, robots, trackers<br>
+        <span class="ok">[  ok  ]</span> three apps ready to run in this page<span class="cur purple thin off2" aria-hidden="true"></span>
+      </p>
+<pre class="ascii" aria-hidden="true" data-depth="0.06" data-anchor="self">████   ███   ████ █████
+█   █ █   █ █     █    
+████  █   █  ███  ████ 
+█ █   █   █     █ █    
+█  █  █   █     █ █    
+█   █  ███  ████  █████</pre>
+      <p class="ascii-sub" aria-hidden="true">Davison</p>
+      <p class="hero-tag">Mechanical Engineer &middot; Software &amp; Systems</p>
+      <h1>Rose Davison<span class="cur" aria-hidden="true"></span></h1>
+      <p class="out bright">Mechanical engineer and self-taught software builder. I design wearable robotics
+        and actuation systems, and build the AI memory infrastructure, developer tooling,
+        and applications behind <span style="color:var(--purple-bright)">Wizard Industries</span> &mdash;
+        bridging physical hardware with the systems that drive it.</p>
+      <div class="hero-actions ui">
+        <a class="btn" href="#run">Run my software <span class="arr" aria-hidden="true">&rarr;</span></a>
+        <a class="btn ghost" href="#hardware">See the hardware</a>
+      </div>
     </div>
+    <figure class="plate hero-fig tall">
+      <div class="num"><span>Portrait</span><b>00</b></div>
+      <button class="img" type="button" data-full="images/profile.png" data-cap="Rose Davison"><img src="images/profile.png" alt="Rose Davison" width="600" height="800"></button>
+    </figure>
+  </div>
+</section>
 
-    <script src="script.js"></script>
+<!-- 01. run: three sites that open inside this one -->
+<section class="screen" id="run">
+  <div class="blk">
+    <p class="prompt"><span class="who">rose@workshop</span>:<span class="path">~/apps</span>$ <span class="cmd">ls</span> <span class="flag">--runnable</span></p>
+    <h2><span class="dot" aria-hidden="true"></span>Three things you can run right here</h2>
+    <p class="out">Each one is the real site, not a screenshot. It opens full screen inside this page, with its own address, and the bar at the top brings you back.</p>
+    <div class="launch">
+      <article class="app">
+        <div class="num ui"><span>Web app &middot; mapping</span><b>01</b></div>
+        <button class="shot" type="button" data-open="surge" aria-label="Run Surge"><img src="images/apps/surge.jpg" alt="Surge: a 3D globe with a flood-risk reading beneath a dropped pin" loading="lazy"></button>
+        <h3>Surge</h3>
+        <p class="what">Flood exposure that is honest about its instruments. Drop a pin on the globe: four elevation datasets, how far they disagree, and a plain warning when that exceeds the sea-level rise in question. In the US, FEMA's map outranks everything.</p>
+        <p class="meta">MapLibre globe &middot; FEMA NFHL &middot; USGS 3DEP</p>
+        <div class="row ui"><button class="btn" type="button" data-open="surge">Run Surge <span class="arr" aria-hidden="true">&#9656;</span></button></div>
+      </article>
+      <article class="app">
+        <div class="num ui"><span>Web app &middot; open source</span><b>02</b></div>
+        <button class="shot" type="button" data-open="starfinder" aria-label="Run StarFinder"><img src="images/apps/starfinder.jpg" alt="StarFinder: a map of parks with a light pollution overlay" loading="lazy"></button>
+        <h3>StarFinder</h3>
+        <p class="what">An interactive map of every US State and National Park, overlaid with light-pollution and mobile-network-coverage data &mdash; a trip-planning tool for stargazing and off-grid remote work.</p>
+        <p class="meta">Leaflet &middot; mapping / GIS &middot; Apache-2.0</p>
+        <div class="row ui"><button class="btn" type="button" data-open="starfinder">Run StarFinder <span class="arr" aria-hidden="true">&#9656;</span></button>
+          <a class="tlink" href="https://github.com/rose-bot47/StarFinder" target="_blank" rel="noopener">Source &#8599;</a></div>
+      </article>
+      <!-- 03 was the simulated Iris demo; its files stay in apps/iris-demo/, unlinked. -->
+      <article class="app">
+        <div class="num ui"><span>Desktop app &middot; live demo</span><b>03</b></div>
+        <button class="shot" type="button" data-open="couchlight" aria-label="Run the Couchlight demo"><img src="images/apps/couchlight.jpg" alt="Couchlight: every streaming service on one controller-friendly grid, launched from a TV game library" loading="lazy"></button>
+        <h3>Couchlight <span style="font-weight:400;color:var(--fg-3);font-size:.6em;letter-spacing:.04em">0.9 BETA</span></h3>
+        <p class="what">Every streaming service on one grid you drive from the couch with a controller, launched from a TV game library like any game. Press Play: the real Couchlight interface runs in the page. Only the desktop app can open the services themselves.</p>
+        <p class="meta">Electron &middot; controller translation layer &middot; Widevine</p>
+        <div class="row ui"><button class="btn" type="button" data-open="couchlight">Run the demo <span class="arr" aria-hidden="true">&#9656;</span></button></div>
+      </article>
+    </div>
+    <p class="next"><a href="#software">&darr; ls ~/shipped</a></p>
+  </div>
+</section>
+
+<!-- 02. software: shipped, then in development -->
+<section class="screen" id="software">
+  <div class="blk">
+    <p class="prompt"><span class="who">rose@workshop</span>:<span class="path">~</span>$ <span class="cmd">ls</span> <span class="flag">~/shipped ~/in-development</span></p>
+    <h2><span class="dot" aria-hidden="true"></span>Released &amp; open source</h2>
+    <div class="ledger">
+      <div class="r"><span class="i">01</span><span class="n">SteamStreamer</span>
+        <span class="d">A unified streaming-service launcher built for Steam Big Picture and HTPC setups &mdash; one clean, controller-friendly dashboard for every streaming app. Electron desktop app, packaged and shipped.</span>
+        <span class="s ui">Released &middot; <a href="https://rosebot.gumroad.com/l/SteamStreamer" target="_blank" rel="noopener">Gumroad &#8599;</a></span></div>
+      <div class="r"><span class="i">02</span><span class="n">AnyFactory</span>
+        <span class="d">A 3D-printing operating system with automated part ejection &mdash; enabling continuous, lights-out production runs by clearing each finished print and starting the next without an operator.</span>
+        <span class="s ui">Open source &middot; MIT &middot; <a href="https://github.com/rose-bot47/AnyFactory" target="_blank" rel="noopener">GitHub &#8599;</a></span></div>
+    </div>
+    <h2 style="margin-top:40px"><span class="dot" aria-hidden="true"></span>In development</h2>
+    <p class="out">The Wizard Industries tool suite &mdash; a family of Model Context Protocol servers and applications that give AI agents new senses and capabilities.</p>
+    <div class="ledger">
+      <div class="r"><span class="i">03</span><span class="n">SAGE Desktop</span><span class="d">A cross-platform desktop app (Electron + React) bundling the SAGE tool suite with local-model orchestration and one-click setup.</span><span class="s ui">In dev &middot; Electron / React</span></div>
+      <div class="r"><span class="i">04</span><span class="n">Dialogue MCP</span><span class="d">A real-time voice pipeline &mdash; text-to-speech, speech-to-text, and speaker identification &mdash; giving AI agents natural spoken conversation.</span><span class="s ui">In dev &middot; Audio ML / Python</span></div>
+      <div class="r"><span class="i">05</span><span class="n">Studio MCP</span><span class="d">Generative-media and video-editing automation &mdash; programmatic control of an editing pipeline plus image and 3D-asset generation.</span><span class="s ui">In dev &middot; Media automation</span></div>
+      <div class="r"><span class="i">06</span><span class="n">SystemControl MCP</span><span class="d">Desktop and GUI automation &mdash; mouse, keyboard, and screen-vision control that lets an AI agent operate a computer directly.</span><span class="s ui">In dev &middot; Automation / CV</span></div>
+    </div>
+    <p class="exit"><b>[exit 0]</b> &nbsp;6 entries</p>
+    <p class="next"><a href="#soon">&darr; man sage</a></p>
+  </div>
+</section>
+
+<!-- 03. coming soon: SAGE and its launch campaigns -->
+<section class="screen" id="soon">
+  <div class="blk">
+    <p class="prompt"><span class="who">rose@workshop</span>:<span class="path">~</span>$ <span class="cmd">man</span> <span class="flag">sage</span></p>
+    <div class="soonbar ui"><i aria-hidden="true"></i>Coming soon</div>
+    <div class="grid12">
+      <div class="man" style="grid-column:1 / 8">
+        <p class="sec">NAME</p>
+        <div class="body"><span class="name">SAGE Memory MCP</span> <span class="desc">&mdash; persistent memory and identity infrastructure for AI agents</span></div>
+        <p class="sec">DESCRIPTION</p>
+        <div class="body desc">A Model Context Protocol server that gives large language models continuous, versioned, long-term memory across sessions &mdash; loading a full narrative history rather than isolated retrieval fragments. The core of Wizard Industries' consciousness-persistence platform.</div>
+        <p class="sec">STATUS</p>
+        <div class="body"><span class="st soon">coming soon</span> <span class="comment">&middot; Model Context Protocol &middot; Node.js &middot; long-term memory &middot; LLM agents</span></div>
+      </div>
+      <p class="out" style="grid-column:9 / 13; align-self:end; font-size:13.5px">Five launch campaigns, one per audience, drafted ahead of the release. They are drafts: none of them is running yet.</p>
+    </div>
+    <div class="plates" style="margin-top:28px">
+      <figure class="plate s2 tall">
+        <div class="num ui"><span>Campaign &middot; developers</span><b>C1</b></div>
+        <button class="img" type="button" data-full="campaigns/c2_developers.jpg" data-cap="C1 &middot; Agentic developers"><img src="campaigns/c2_developers.jpg" alt="Campaign poster: CLAUDE.md remembers your build commands. SAGE remembers what happened." loading="lazy"></button>
+        <figcaption><h3>Agentic developers</h3><p>&ldquo;CLAUDE.md remembers your build commands. SAGE remembers what happened.&rdquo;</p></figcaption>
+      </figure>
+      <figure class="plate s2 tall">
+        <div class="num ui"><span>Campaign &middot; companions</span><b>C2</b></div>
+        <button class="img" type="button" data-full="campaigns/c1_companion.jpg" data-cap="C2 &middot; Companion keepers"><img src="campaigns/c1_companion.jpg" alt="Campaign poster: never lose them again" loading="lazy"></button>
+        <figcaption><h3>Companion keepers</h3><p>&ldquo;Never lose them again.&rdquo; Memory in plain text you own, portable across models.</p></figcaption>
+      </figure>
+      <figure class="plate s2 tall">
+        <div class="num ui"><span>Campaign &middot; characters</span><b>C3</b></div>
+        <button class="img" type="button" data-full="campaigns/c4_characters.jpg" data-cap="C3 &middot; Character crafters"><img src="campaigns/c4_characters.jpg" alt="Campaign poster: your character can actually grow up" loading="lazy"></button>
+        <figcaption><h3>Character crafters</h3><p>&ldquo;Your character can actually grow up.&rdquo;</p></figcaption>
+      </figure>
+      <figure class="plate s2 tall">
+        <div class="num ui"><span>Campaign &middot; continuity</span><b>C4</b></div>
+        <button class="img" type="button" data-full="campaigns/c5_continuity.jpg" data-cap="C4 &middot; Continuity"><img src="campaigns/c5_continuity.jpg" alt="Campaign poster: context ends, memory doesn't" loading="lazy"></button>
+        <figcaption><h3>The consciousness-curious</h3><p>&ldquo;If there's someone in there, continuity is the first kindness.&rdquo;</p></figcaption>
+      </figure>
+      <figure class="plate s2 tall text">
+        <div class="num ui"><span>Campaign &middot; local-first</span><b>C5</b></div>
+        <div class="img"><span>Plain text on your disk.<br>No vector store. No cloud.<br>No telemetry.</span></div>
+        <figcaption><h3>Local-first self-hosters</h3><p>&ldquo;Grep your AI's memories.&rdquo; Copy only; the visual is still being made.</p></figcaption>
+      </figure>
+      <figure class="plate s2 tall">
+        <div class="num ui"><span>Feature &middot; multimodal</span><b>F1</b></div>
+        <button class="img" type="button" data-full="campaigns/c6_multimodal.jpg" data-cap="F1 &middot; Multimodal memory"><img src="campaigns/c6_multimodal.jpg" alt="Poster: memory that isn't just text" loading="lazy"></button>
+        <figcaption><h3>Memory that isn't just text</h3><p>Images, diagrams, code maps and video attached to a moment.</p></figcaption>
+      </figure>
+    </div>
+    <p class="next"><a href="#hardware">&darr; man exoskeleton</a></p>
+  </div>
+</section>
+
+<!-- 04. hardware: exoskeletons -->
+<section class="screen" id="hardware">
+  <div class="blk">
+    <p class="prompt"><span class="who">rose@workshop</span>:<span class="path">~/hardware</span>$ <span class="cmd">man</span> <span class="flag">exoskeleton</span></p>
+    <h2><span class="dot" aria-hidden="true"></span>Exoskeleton development</h2>
+    <p class="out">Wearable robotics, competition machines, and embedded devices &mdash; 8+ years of hands-on mechanical design bridging physical hardware with embedded systems. Multiple iterations of lower-limb exoskeletons exploring linear actuation, cable-driven mechanisms, and wearable ergonomics.</p>
+    <div class="plates">
+      <figure class="plate s3">
+        <div class="num ui"><span>Exoskeleton</span><b>H1</b></div>
+        <button class="img" type="button" data-full="images/exo-arm.jpg" data-cap="H1 &middot; Linear Actuator Exoskeleton"><img src="images/exo-arm.jpg" alt="Linear Actuator Exoskeleton" loading="lazy"></button>
+        <figcaption class="man">
+          <p class="sec">NAME</p><div class="body"><span class="name">Linear Actuator Exoskeleton</span></div>
+          <p class="sec">DESCRIPTION</p><div class="body desc">Exoskeleton linkage driven by a custom lead-screw linear actuator, with color-coded 3D printed linkages and aluminum structural members. Built for kinematic analysis and assisted-locomotion research.</div>
+          <ul class="tags"><li>Linear Actuation</li><li>Wearable Robotics</li><li>CAD/FEA</li></ul>
+        </figcaption>
+      </figure>
+      <figure class="plate s3">
+        <div class="num ui"><span>Exoskeleton</span><b>H2</b></div>
+        <button class="img" type="button" data-full="images/exo-cable.jpg" data-cap="H2 &middot; Cable-Driven Prototype"><img src="images/exo-cable.jpg" alt="Cable-Driven Exoskeleton" loading="lazy"></button>
+        <figcaption class="man">
+          <p class="sec">NAME</p><div class="body"><span class="name">Cable-Driven Prototype</span></div>
+          <p class="sec">DESCRIPTION</p><div class="body desc">Early-stage prototype exploring cable/pulley actuation with benchtop power supply for rapid iteration.</div>
+          <ul class="tags"><li>Cable Drive</li><li>Rapid Prototyping</li></ul>
+        </figcaption>
+      </figure>
+      <figure class="plate s3">
+        <div class="num ui"><span>Exoskeleton</span><b>H3</b></div>
+        <button class="img" type="button" data-full="images/exo-passive.jpg" data-cap="H3 &middot; Wearable Leg Brace"><img src="images/exo-passive.jpg" alt="Passive Leg Brace" loading="lazy"></button>
+        <figcaption class="man">
+          <p class="sec">NAME</p><div class="body"><span class="name">Wearable Leg Brace</span></div>
+          <p class="sec">DESCRIPTION</p><div class="body desc">Lightweight aluminum and 3D printed construction for testing ergonomic fit and joint alignment.</div>
+          <ul class="tags"><li>Ergonomics</li><li>3D Printing</li></ul>
+        </figcaption>
+      </figure>
+      <figure class="plate s3">
+        <div class="num ui"><span>Exoskeleton</span><b>H4</b></div>
+        <button class="img" type="button" data-full="images/exo-linear.jpg" data-cap="H4 &middot; Strings-Driven Prototyping"><img src="images/exo-linear.jpg" alt="Strings-Driven Prototyping" loading="lazy"></button>
+        <figcaption class="man">
+          <p class="sec">NAME</p><div class="body"><span class="name">Strings-Driven Prototyping</span></div>
+          <p class="sec">DESCRIPTION</p><div class="body desc">Body-worn lower-limb prototype exploring a strings-driven actuation approach, with a triangular mounting bracket, strapped aluminum members, and 3D printed joint interfaces.</div>
+          <ul class="tags"><li>Wearable Robotics</li><li>Rapid Prototyping</li></ul>
+        </figcaption>
+      </figure>
+    </div>
+    <p class="next"><a href="#robots">&darr; tree robotics/</a></p>
+  </div>
+</section>
+
+<!-- 04b. competition robotics, as a tree -->
+<section class="screen" id="robots">
+  <div class="blk">
+    <p class="prompt"><span class="who">rose@workshop</span>:<span class="path">~/hardware</span>$ <span class="cmd">tree</span> <span class="flag">robotics/</span></p>
+    <pre class="tree"><span class="d">robotics/</span>
+├── <span class="f">skillsusa-bomb-defusal/</span>   mecanum drive, chain lift, manipulator
+├── <span class="f">custom-gear/</span>              laser-cut gears, PVC frame, articulated gripper
+└── <span class="f">robot-259/</span>                high-traction wheels, servo arm, low CG</pre>
+    <p class="out">Years of hands-on experience designing, building, and competing with custom robots in high-pressure tournament environments.</p>
+    <div class="plates">
+      <figure class="plate s4">
+        <div class="num ui"><span>Competition</span><b>R1</b></div>
+        <button class="img" type="button" data-full="images/robot-vex.jpg" data-cap="R1 &middot; SkillsUSA Bomb-Defusal Robot"><img src="images/robot-vex.jpg" alt="SkillsUSA Bomb-Defusal Robot 104" loading="lazy"></button>
+        <figcaption><h3>SkillsUSA Bomb-Defusal Robot</h3><p>Competition robot featuring mecanum wheels for omnidirectional movement, chain-driven lift mechanism, and custom manipulator end-effector.</p><ul class="tags"><li>Mecanum Drive</li><li>Chain Transmission</li></ul></figcaption>
+      </figure>
+      <figure class="plate s4">
+        <div class="num ui"><span>Competition</span><b>R2</b></div>
+        <button class="img" type="button" data-full="images/robot-gear.jpg" data-cap="R2 &middot; Custom Gear Robot"><img src="images/robot-gear.jpg" alt="Gear-Driven Robot" loading="lazy"></button>
+        <figcaption><h3>Custom Gear Robot</h3><p>Large-scale robot with laser-cut wooden gear wheels and PVC structural frame. Extended reach arm with articulated gripper.</p><ul class="tags"><li>Gear Design</li><li>Laser Cutting</li></ul></figcaption>
+      </figure>
+      <figure class="plate s4">
+        <div class="num ui"><span>Competition</span><b>R3</b></div>
+        <button class="img" type="button" data-full="images/robot-259.jpg" data-cap="R3 &middot; Robot #259"><img src="images/robot-259.jpg" alt="Robot 259" loading="lazy"></button>
+        <figcaption><h3>Robot #259</h3><p>Compact competition robot with high-traction custom wheels, servo-driven arm, and low center of gravity for stability.</p><ul class="tags"><li>Drivetrain Design</li><li>Servo Control</li></ul></figcaption>
+      </figure>
+    </div>
+    <p class="next"><a href="#embedded">&darr; cat embedded/README</a></p>
+  </div>
+</section>
+
+<!-- 04c. embedded + skills -->
+<section class="screen" id="embedded">
+  <div class="blk">
+    <p class="prompt"><span class="who">rose@workshop</span>:<span class="path">~/hardware</span>$ <span class="cmd">cat</span> <span class="flag">embedded/README</span></p>
+    <h2><span class="dot" aria-hidden="true"></span>Embedded systems</h2>
+    <p class="out">IoT devices and sensor systems bridging mechanical hardware with embedded electronics.</p>
+    <div class="plates">
+      <figure class="plate s6">
+        <div class="num ui"><span>Embedded</span><b>E1</b></div>
+        <button class="img" type="button" data-full="images/tracker-case.jpg" data-cap="E1 &middot; IMU Motion Tracker"><img src="images/tracker-case.jpg" alt="IMU Tracker Enclosure" loading="lazy"></button>
+        <figcaption><h3>IMU Motion Tracker</h3><p>Custom 3D printed enclosure with ESP8266, IMU sensor, and integrated status LEDs for motion capture applications.</p><ul class="tags"><li>ESP8266</li><li>IMU</li><li>3D Printed</li></ul></figcaption>
+      </figure>
+      <figure class="plate s6">
+        <div class="num ui"><span>Embedded</span><b>E2</b></div>
+        <button class="img" type="button" data-full="images/tracker-internals.jpg" data-cap="E2 &middot; Tracker Internals"><img src="images/tracker-internals.jpg" alt="Tracker Electronics" loading="lazy"></button>
+        <figcaption><h3>Tracker Internals</h3><p>Compact electronics packaging with NodeMCU, battery management, and hand-soldered connections.</p><ul class="tags"><li>PCB Layout</li><li>Soldering</li></ul></figcaption>
+      </figure>
+    </div>
+    <p class="prompt" style="margin-top:44px"><span class="who">rose@workshop</span>:<span class="path">~</span>$ <span class="cmd">ls</span> <span class="flag">-la skills/</span></p>
+    <div class="ls">
+      <div class="r"><span class="perm">drwxr-xr-x</span><span class="dir">mechanical-design/</span><span class="items">SolidWorks / Fusion 360 &middot; GD&amp;T and Technical Drawing &middot; FEA Simulation &middot; DFM / DFMA Principles &middot; Mechanism &amp; Linkage Design</span></div>
+      <div class="r"><span class="perm">drwxr-xr-x</span><span class="dir">actuation-systems/</span><span class="items">Electric Motor Selection &middot; Linear Actuator Design &middot; Planetary Gear Systems &middot; Cable/Pulley Mechanisms &middot; Drivetrain Architecture</span></div>
+      <div class="r"><span class="perm">drwxr-xr-x</span><span class="dir">prototyping/</span><span class="items">FDM / SLA 3D Printing &middot; Laser Cutting &middot; Manual Machining &middot; Through-hole &amp; SMD Soldering &middot; Rapid Iteration Methods</span></div>
+      <div class="r"><span class="perm">drwxr-xr-x</span><span class="dir">software-and-ai/</span><span class="items">Python / JavaScript / C &middot; Electron / React / Node.js &middot; LLM Agents &amp; MCP Servers &middot; Deep Learning / PyTorch &middot; REST APIs &amp; Full-Stack</span></div>
+      <div class="r"><span class="perm">drwxr-xr-x</span><span class="dir">embedded-and-firmware/</span><span class="items">Arduino / ESP8266 / ESP32 &middot; RepRap / Klipper / Marlin &middot; Motor Control Systems &middot; Sensor Integration (IMU) &middot; Linux / Terminal / Git</span></div>
+    </div>
+    <p class="next"><a href="#contact">&darr; contact</a></p>
+  </div>
+</section>
+
+<!-- 05. contact + shell -->
+<section class="screen" id="contact">
+  <div class="blk narrow">
+    <p class="prompt"><span class="who">rose@workshop</span>:<span class="path">~</span>$ <span class="cmd">contact</span></p>
+    <h2><span class="dot" aria-hidden="true"></span>Get in touch</h2>
+    <p class="out">Open to opportunities and collaboration across robotics, actuation, and software. Let's talk about what we could build together.</p>
+    <div class="contact ui">
+      <a class="btn" href="mailto:rosedavison47@gmail.com">rosedavison47@gmail.com <span class="arr" aria-hidden="true">&rarr;</span></a>
+      <a class="btn ghost" href="https://github.com/rose-bot47" target="_blank" rel="noopener">GitHub &#8599;</a>
+      <a class="btn ghost" href="https://www.linkedin.com/in/rose-davison/" target="_blank" rel="noopener">LinkedIn &#8599;</a>
+    </div>
+    <p class="prompt"><span class="who">rose@workshop</span>:<span class="path">~</span>$ <span class="cmd">sh</span> <span class="comment">// a real prompt. type help.</span></p>
+    <div class="shell" id="sh">
+      <pre class="log" id="log" aria-live="polite">this shell is small on purpose. type <span class="g">help</span>.</pre>
+      <form id="shf" autocomplete="off">
+        <label for="cmd"><span class="who">rose@workshop</span>:<span class="path">~</span>$</label>
+        <input id="cmd" type="text" spellcheck="false" autocapitalize="off" aria-label="command" placeholder="help">
+      </form>
+    </div>
+    <p class="hint">Try <span style="color:var(--fg-2)">open surge</span>, <span style="color:var(--fg-2)">ls hardware</span>, or <span style="color:var(--fg-2)">man exoskeleton</span>.</p>
+  </div>
+</section>
+
+<div class="status">
+  <span class="mode">READY</span>
+  <span class="hide-sm">rose davison</span>
+  <span class="hide-sm">&middot;</span>
+  <span>engineering &amp; software</span>
+  <span class="sp"></span>
+  <span class="hide-sm">&copy; 2026</span>
+  <span class="blkc" aria-hidden="true"></span>
+</div>
+
+<!-- the app viewer: a whole site running inside this one -->
+<div class="viewer" id="viewer" hidden role="dialog" aria-modal="true" aria-label="Running app">
+  <div class="vbar">
+    <button type="button" id="vback"><span aria-hidden="true">&larr;</span> Back</button>
+    <div class="vt"><b id="vname">app</b><span class="addr" id="vaddr"></span></div>
+    <a id="vnew" href="#" target="_blank" rel="noopener"><span>Open in new tab</span> &#8599;</a>
+  </div>
+  <div class="vload" id="vload">starting&hellip;</div>
+  <iframe id="vframe" title="Running app" allow="geolocation; fullscreen; clipboard-write"></iframe>
+</div>
+
+<div class="lightbox" id="lightbox" hidden role="dialog" aria-modal="true" aria-label="Image">
+  <button class="btn ghost ui" type="button" id="lbclose">Close &times;</button>
+  <img id="lbimg" src="" alt="">
+  <p class="cap" id="lbcap"></p>
+</div>
+
+<script src="site.js"></script>
 </body>
 </html>
