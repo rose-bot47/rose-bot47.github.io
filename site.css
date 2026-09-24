@@ -273,6 +273,10 @@ pre.tree .d{color:var(--cyan)} pre.tree .f{color:var(--fg)}
    of scrolling off the edge, and plates sized for a hand.
    ========================================================== */
 html{-webkit-text-size-adjust:100%; text-size-adjust:100%}
+/* The 3px/4px scanline gradient aliases into thick grey bands on high-DPR phone
+   screens (seen on Rose's iPhone over the light posters). Keep the vignette, drop
+   the lines on touch screens and narrow viewports. */
+@media (max-width:860px), (pointer:coarse){ .crt{background:none} }
 @media (max-width:640px){
   :root{--pad:16px}
   html{scroll-snap-type:none}
