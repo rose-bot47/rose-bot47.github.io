@@ -128,10 +128,13 @@ h1{margin:10px 0 14px; font-size:clamp(1.2rem,3vw,2rem); font-weight:700; letter
 h1 .op{color:var(--amber)}
 h2{margin:0 0 14px; font-size:1.08rem; font-weight:700; color:var(--green); letter-spacing:0.02em; font-family:var(--mono)}
 
-pre.ascii{margin:0 auto 6px; color:var(--purple); font-size:clamp(14px,3.1vw,34px); line-height:1.04; overflow:visible; white-space:pre; display:inline-block; text-align:left;
-  padding:0 .6ch; max-width:100%; text-shadow:0 0 18px oklch(0.72 0.165 300 / 0.45)}
-@media (max-width:520px){ pre.ascii{font-size:13px} }
-.ascii-sub{margin:0 0 24px; color:var(--purple-dim); font-size:clamp(10px,1.2vw,13px); letter-spacing:0.62em; text-transform:uppercase}
+/* the wordmark: pixel art drawn as SVG so it never depends on a font having the block glyph.
+   ROSE on top, DAVISON beneath at the same width. */
+.wordmark{display:block; width:min(100%, 420px); height:auto; margin:4px 0 26px; overflow:visible;
+  filter:drop-shadow(0 0 10px oklch(0.72 0.165 300 / 0.45))}
+.wordmark .r{fill:var(--purple)}
+.wordmark .d{fill:var(--purple-bright); opacity:.82}
+.vh{position:absolute !important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0}
 .boot{margin:0 0 18px; color:var(--fg-3); font-size:13px; line-height:1.75}
 .boot .ok{color:var(--green)}
 
@@ -263,3 +266,55 @@ pre.tree .d{color:var(--cyan)} pre.tree .f{color:var(--fg)}
   .matrix{opacity:0.07}
 }
 @media (max-width:860px){ .grid12 > *{grid-column:1 / -1 !important} }
+
+/* ==========================================================
+   PHONES (Sep 24 2026 overhaul). Natural-height screens instead of
+   full-viewport ones, a smaller type scale, a nav that fits instead
+   of scrolling off the edge, and plates sized for a hand.
+   ========================================================== */
+html{-webkit-text-size-adjust:100%; text-size-adjust:100%}
+@media (max-width:640px){
+  :root{--pad:16px}
+  html{scroll-snap-type:none}
+  body{font-size:13px; line-height:1.55; padding-bottom:36px}
+  .screen{min-height:0; padding:72px var(--pad) 36px; place-items:start stretch}
+  #top.screen{padding-top:64px}
+
+  /* nav: six equal cells, number over label, nothing hidden off the edge */
+  .sysline{height:46px; padding:0; display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); overflow:visible}
+  .sysline .id{display:none}
+  .sysline a{flex-direction:column; justify-content:center; gap:3px; padding:0 2px; font-size:8.5px; letter-spacing:.04em; border-left:1px solid var(--line); text-align:center; overflow:hidden; white-space:nowrap}
+  .sysline a:first-of-type{border-left:0}
+  .sysline a span{display:block; margin:0; font-size:11px; color:var(--fg-3); letter-spacing:0}
+  .sysline a[aria-current] span{color:var(--amber)}
+
+  .boot{font-size:11.5px; line-height:1.65; margin-bottom:14px}
+  .wordmark{width:100%; max-width:340px; margin-bottom:20px}
+  .hero-tag{font-size:10.5px; letter-spacing:.1em}
+  .out{font-size:13px}
+  .prompt{font-size:12.5px; margin-bottom:12px}
+  h2{font-size:15px}
+  .hero-actions{gap:10px; margin-top:18px}
+  .btn{min-height:42px; padding:0 14px; font-size:11.5px; letter-spacing:.05em; gap:8px}
+  .hero-actions .btn,.contact .btn{flex:1 1 100%; justify-content:center}
+  .contact{gap:10px}
+  .hero-fig{max-width:220px}
+
+  .launch{gap:34px}
+  .app .num b{font-size:24px}
+  .app h3{font-size:20px; margin-top:12px}
+  .app .what{font-size:13px}
+  .app .meta{font-size:10px}
+  .plates{gap:26px 0}
+  .plate h3{font-size:15px}
+  .plate p{font-size:13px}
+  .ledger .r{padding:12px 0; gap:0 2ch}
+  .ledger .n{font-size:14px}
+  .ledger .d{font-size:13px}
+  pre.tree{font-size:12px}
+  .shell .log{font-size:12.5px}
+  .next{margin-top:18px}
+
+  .status{padding:6px var(--pad); font-size:10.5px; gap:1.5ch}
+  .status .mode{padding:2px .8ch}
+}
