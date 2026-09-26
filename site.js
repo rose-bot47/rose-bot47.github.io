@@ -4,6 +4,38 @@
   var root = document.documentElement;
   document.addEventListener('visibilitychange', function(){ root.classList.toggle('tab-hidden', document.hidden); });
 
+  /* ── the scanlines, snapped to the device's own pixels (Sep 26 2026) ──
+     On Sep 24 the 3px/1px CSS gradient came out as thick grey bands on Rose's
+     iPhone, so it was switched off on phones. It is back, drawn a way that
+     cannot alias: measure how many device pixels one CSS pixel really is
+     (devicePixelRatio times any pinch zoom), paint a one-column tile of WHOLE
+     device pixels on a canvas (1 dark line per ~4 CSS px), and show it at
+     exactly its native size with nearest-neighbour scaling, so every line lands
+     on a pixel row on any screen: 2x, 3x, a 2.625x foldable, or a zoomed page.
+     Re-snapped on resize, rotation, pinch zoom and DPR change. Capability
+     fallback: no canvas, or a screen under 1.5x on a phone, means no lines on
+     phones (the Sep 24 behaviour), never the banded gradient. */
+  var crt = document.querySelector('.crt'), lastD = 0;
+  function snapScan(){
+    if (!crt) return;
+    var vv = window.visualViewport, d = (window.devicePixelRatio || 1) * (vv && vv.scale ? vv.scale : 1);
+    if (Math.abs(d - lastD) < 0.01) return; lastD = d;
+    var line = Math.max(1, Math.round(d)), gap = Math.max(2, Math.round(3 * d));
+    try {
+      var c = document.createElement('canvas'); c.width = 1; c.height = line + gap;
+      var g = c.getContext('2d'); if (!g) throw 0;
+      g.fillStyle = 'rgba(16,15,22,0.30)'; g.fillRect(0, gap, 1, line);
+      root.style.setProperty('--scan-img', 'url(' + c.toDataURL('image/png') + ')');
+      root.style.setProperty('--scan-period', ((line + gap) / d) + 'px');
+      crt.classList.add('snapped');
+    } catch (e) { crt.classList.remove('snapped'); }
+  }
+  snapScan();
+  window.addEventListener('resize', snapScan);
+  window.addEventListener('orientationchange', function(){ lastD = 0; setTimeout(snapScan, 250); });
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', snapScan);
+  try { matchMedia('(resolution: ' + (window.devicePixelRatio || 1) + 'dppx)').addEventListener('change', function(){ lastD = 0; snapScan(); }); } catch (e) {}
+
   /* ── the sky: three star planes behind the rain ─────────────
      Position is randomised first (BrutaliststyleContext V7: rain has no
      pitch, and neither do stars). Each plane has its own size, colour mix

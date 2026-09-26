@@ -276,7 +276,10 @@ html{-webkit-text-size-adjust:100%; text-size-adjust:100%}
 /* The 3px/4px scanline gradient aliases into thick grey bands on high-DPR phone
    screens (seen on Rose's iPhone over the light posters). Keep the vignette, drop
    the lines on touch screens and narrow viewports. */
-@media (max-width:860px), (pointer:coarse){ .crt{background:none} }
+/* Sep 26: phones get the lines back through the snapped tile (site.js). Only an
+   UNsnapped overlay (no script, no canvas) drops them on phones. */
+@media (max-width:860px), (pointer:coarse){ .crt:not(.snapped){background:none} }
+.crt.snapped{background:var(--scan-img) repeat 0 0 / 100% var(--scan-period); image-rendering:pixelated; image-rendering:crisp-edges}
 @media (max-width:640px){
   :root{--pad:16px}
   html{scroll-snap-type:none}
@@ -321,4 +324,54 @@ html{-webkit-text-size-adjust:100%; text-size-adjust:100%}
 
   .status{padding:6px var(--pad); font-size:10.5px; gap:1.5ch}
   .status .mode{padding:2px .8ch}
+}
+
+/* ==========================================================
+   PHONES, SECOND PASS (Sep 26 2026): pictures and elements sized for a hand.
+   DesignContext: one focal block per screen, density is a promise about who is
+   welcome, and the thumb at arm's length. On a 390px phone every image was a
+   full-width plate (a 3:4 poster was ~480px tall), so a single project filled
+   the screen and the page read as a scroll of pictures. Now images are
+   thumbnails beside their text and open full size on tap (the lightbox was
+   already there); posters sit two to a row; app shots are cinema-short.
+   ========================================================== */
+@media (max-width:640px){
+  /* project plates: a media row, thumbnail left, the words right */
+  #hardware .plates, #robots .plates, #embedded .plates{gap:22px 0}
+  #hardware .plate, #robots .plate, #embedded .plate{display:grid; grid-template-columns:38% minmax(0,1fr); column-gap:14px; align-items:start}
+  #hardware .plate .num, #robots .plate .num, #embedded .plate .num{grid-column:1 / -1}
+  #hardware .plate .img, #robots .plate .img, #embedded .plate .img{aspect-ratio:1/1; grid-column:1}
+  #hardware .plate figcaption, #robots .plate figcaption, #embedded .plate figcaption{grid-column:2; margin-top:0}
+  #hardware .plate .man .body{padding-left:0}
+  #hardware .plate .man .sec{margin-top:6px; font-size:10.5px}
+  #hardware .plate .man .sec:first-child{margin-top:0}
+  .plate figcaption p, .plate .man .desc{font-size:12.5px; line-height:1.5}
+  .plate h3{font-size:14px}
+  .tags{font-size:11px; gap:2px 10px}
+
+  /* campaign posters: two to a row, the poster is the thumbnail */
+  #soon .plates{grid-template-columns:repeat(2, minmax(0,1fr)); gap:22px 14px}
+  #soon .plates > *{grid-column:span 1 !important}
+  #soon .plate .img{aspect-ratio:4/5}
+  /* the posters are five different shapes (0.59 to 0.95); cover cropped their own
+     headlines, so a thumbnail shows the whole poster and letterboxes the rest */
+  #soon .plate .img img{object-fit:contain}
+  #soon .plate h3{font-size:13px; margin-bottom:3px}
+  #soon .plate figcaption p{font-size:11.5px; line-height:1.45}
+  #soon .plate .num{font-size:9.5px; letter-spacing:.08em}
+  #soon .plate.text .img span{font-size:11px}
+
+  /* RUN: the app shot stays the call to action, just not a full screen of it */
+  .app .shot{aspect-ratio:2/1}
+  .app h3{font-size:19px}
+
+  /* portrait: a plate beside the name, not a second screen */
+  .hero-fig{max-width:150px}
+
+  /* the nav labels were 8.5px; the floor for a label is ~10px */
+  .sysline a{font-size:clamp(8.5px, 2.6vw, 10px); letter-spacing:.02em}
+}
+@media (max-width:360px){
+  #hardware .plate, #robots .plate, #embedded .plate{grid-template-columns:34% minmax(0,1fr); column-gap:12px}
+  #soon .plates{gap:18px 10px}
 }
